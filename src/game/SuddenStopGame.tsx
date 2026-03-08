@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { ParticleExplosion, StreakFlame } from "./Particles";
+import { playPerfect, playGood, playMiss, playGameOver, playStart, hapticLight, hapticMedium, hapticHeavy, hapticError } from "./audio";
 
 type GameState = "menu" | "playing" | "result" | "gameover";
 type HitResult = "perfect" | "good" | "miss" | null;
@@ -27,6 +29,8 @@ export default function SuddenStopGame() {
   const [direction, setDirection] = useState(1);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [flashColor, setFlashColor] = useState<string | null>(null);
+  const [particleActive, setParticleActive] = useState(false);
+  const [particleKey, setParticleKey] = useState(0);
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -42,6 +46,7 @@ export default function SuddenStopGame() {
     setObjectPos(0);
     setDirection(1);
     setHitResult(null);
+    setParticleActive(false);
     isPlayingRef.current = true;
 
     const animate = () => {
@@ -68,6 +73,8 @@ export default function SuddenStopGame() {
     speedRef.current = INITIAL_SPEED;
     setSpeed(INITIAL_SPEED);
     setGameState("playing");
+    playStart();
+    hapticLight();
     setTimeout(() => startRound(), 300);
   }, [startRound]);
 
@@ -89,16 +96,26 @@ export default function SuddenStopGame() {
       newCombo = combo + 1;
       points = 100 + newCombo * 25;
       setFlashColor("primary");
+      setParticleActive(true);
+      setParticleKey(k => k + 1);
+      playPerfect();
+      hapticHeavy();
     } else if (distance <= TARGET_ZONE_WIDTH / 2) {
       result = "good";
       newCombo = combo + 1;
       points = 50 + newCombo * 10;
       setFlashColor("accent");
+      setParticleActive(true);
+      setParticleKey(k => k + 1);
+      playGood();
+      hapticMedium();
     } else {
       result = "miss";
       newCombo = 0;
       setShakeScreen(true);
       setFlashColor("destructive");
+      playMiss();
+      hapticError();
       setTimeout(() => setShakeScreen(false), 400);
     }
 
@@ -118,6 +135,8 @@ export default function SuddenStopGame() {
           localStorage.setItem("suddenstop_high", newScore.toString());
         }
         setGameState("gameover");
+        playGameOver();
+        hapticError();
       } else {
         speedRef.current = INITIAL_SPEED + newRound * SPEED_INCREMENT;
         setSpeed(speedRef.current);
@@ -186,6 +205,8 @@ export default function SuddenStopGame() {
           objectPos={objectPos}
           targetPos={targetPos}
           hitResult={hitResult}
+          particleActive={particleActive}
+          particleKey={particleKey}
         />
       )}
     </div>
@@ -290,6 +311,8 @@ function PlayScreen({
   objectPos,
   targetPos,
   hitResult,
+  particleActive,
+  particleKey,
 }: {
   score: number;
   round: number;
@@ -298,6 +321,8 @@ function PlayScreen({
   objectPos: number;
   targetPos: number;
   hitResult: HitResult;
+  particleActive: boolean;
+  particleKey: number;
 }) {
   return (
     <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[380px]">
@@ -366,6 +391,20 @@ function PlayScreen({
           <div className="absolute top-0 bottom-0 left-1/2 -translate-x-px w-0.5 bg-primary/60" />
         </div>
 
+        {/* Streak flame effect */}
+        <StreakFlame combo={combo} objectPos={objectPos} />
+
+        {/* Particle explosion */}
+        {particleActive && hitResult && hitResult !== "miss" && (
+          <ParticleExplosion
+            key={particleKey}
+            x={objectPos + OBJECT_SIZE / 2}
+            y={40}
+            type={hitResult as "perfect" | "good"}
+            active={true}
+          />
+        )}
+
         {/* Moving object */}
         <div
           className={`absolute top-1/2 -translate-y-1/2 rounded-full transition-none ${
@@ -380,7 +419,19 @@ function PlayScreen({
             width: OBJECT_SIZE,
             height: OBJECT_SIZE,
           }}
-        />
+        >
+          {/* Inner glow for combo streaks */}
+          {combo >= 3 && !hitResult && (
+            <div
+              className="absolute inset-0 rounded-full animate-pulse"
+              style={{
+                background: combo >= 5
+                  ? 'radial-gradient(circle, hsl(50 100% 70% / 0.4), transparent)'
+                  : 'radial-gradient(circle, hsl(35 100% 60% / 0.3), transparent)',
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Result text */}
