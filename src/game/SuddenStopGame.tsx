@@ -1,8 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ParticleExplosion, StreakFlame } from "./Particles";
-import { playPerfect, playGood, playMiss, playGameOver, playStart, hapticLight, hapticMedium, hapticHeavy, hapticError } from "./audio";
+import { playPerfect, playGood, playMiss, playGameOver, playStart, playLifeLost, playTick, hapticLight, hapticMedium, hapticHeavy, hapticError, setVolume, setHapticEnabled } from "./audio";
+import { useSettings } from "./useSettings";
+import SettingsScreen from "./Settings";
+import LeaderboardScreen, { addLeaderboardEntry, getLeaderboard } from "./Leaderboard";
 
-type GameState = "menu" | "playing" | "result" | "gameover";
+export type GameMode = "classic" | "survival" | "timeattack";
+type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "playing" | "result" | "gameover";
 type HitResult = "perfect" | "good" | "miss" | null;
 
 const TRACK_WIDTH = 320;
@@ -12,9 +16,13 @@ const SPEED_INCREMENT = 0.4;
 const TARGET_ZONE_WIDTH = 50;
 const PERFECT_ZONE_WIDTH = 18;
 const ROUNDS_PER_GAME = 10;
+const SURVIVAL_LIVES = 3;
+const TIMEATTACK_DURATION = 30;
 
 export default function SuddenStopGame() {
-  const [gameState, setGameState] = useState<GameState>("menu");
+  const { settings, updateSettings } = useSettings();
+  const [screen, setScreen] = useState<ScreenState>("menu");
+  const [mode, setMode] = useState<GameMode>("classic");
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(0);
   const [highScore, setHighScore] = useState(() => {
@@ -31,12 +39,43 @@ export default function SuddenStopGame() {
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [particleActive, setParticleActive] = useState(false);
   const [particleKey, setParticleKey] = useState(0);
+  const [lives, setLives] = useState(SURVIVAL_LIVES);
+  const [timeLeft, setTimeLeft] = useState(TIMEATTACK_DURATION);
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
   const dirRef = useRef(1);
   const speedRef = useRef(INITIAL_SPEED);
   const isPlayingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scoreRef = useRef(0);
+  const comboRef = useRef(0);
+  const livesRef = useRef(SURVIVAL_LIVES);
+  const roundRef = useRef(0);
+
+  // Sync settings to audio module
+  useEffect(() => {
+    setVolume(settings.volume);
+    setHapticEnabled(settings.hapticEnabled);
+  }, [settings]);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
+
+  const endGame = useCallback((finalScore: number) => {
+    isPlayingRef.current = false;
+    cancelAnimationFrame(animRef.current);
+    stopTimer();
+    if (finalScore > highScore) {
+      setHighScore(finalScore);
+      localStorage.setItem("suddenstop_high", finalScore.toString());
+    }
+    addLeaderboardEntry({ name: "PLAYER", score: finalScore, mode, date: Date.now() });
+    setScreen("gameover");
+    playGameOver();
+    hapticError();
+  }, [highScore, mode, stopTimer]);
 
   const startRound = useCallback(() => {
     const newTarget = 40 + Math.random() * (TRACK_WIDTH - 80 - TARGET_ZONE_WIDTH);
@@ -66,17 +105,37 @@ export default function SuddenStopGame() {
     animRef.current = requestAnimationFrame(animate);
   }, []);
 
-  const startGame = useCallback(() => {
+  const selectMode = useCallback((m: GameMode) => {
+    setMode(m);
     setScore(0);
+    scoreRef.current = 0;
     setRound(0);
+    roundRef.current = 0;
     setCombo(0);
+    comboRef.current = 0;
     speedRef.current = INITIAL_SPEED;
     setSpeed(INITIAL_SPEED);
-    setGameState("playing");
+    setLives(SURVIVAL_LIVES);
+    livesRef.current = SURVIVAL_LIVES;
+    setTimeLeft(TIMEATTACK_DURATION);
+    setScreen("playing");
     playStart();
     hapticLight();
+
+    if (m === "timeattack") {
+      let t = TIMEATTACK_DURATION;
+      timerRef.current = setInterval(() => {
+        t--;
+        setTimeLeft(t);
+        if (t <= 5 && t > 0) playTick();
+        if (t <= 0) {
+          endGame(scoreRef.current);
+        }
+      }, 1000);
+    }
+
     setTimeout(() => startRound(), 300);
-  }, [startRound]);
+  }, [startRound, endGame]);
 
   const handleTap = useCallback(() => {
     if (!isPlayingRef.current) return;
@@ -89,11 +148,11 @@ export default function SuddenStopGame() {
 
     let result: HitResult;
     let points = 0;
-    let newCombo = combo;
+    let newCombo = comboRef.current;
 
     if (distance <= PERFECT_ZONE_WIDTH / 2) {
       result = "perfect";
-      newCombo = combo + 1;
+      newCombo = newCombo + 1;
       points = 100 + newCombo * 25;
       setFlashColor("primary");
       setParticleActive(true);
@@ -102,7 +161,7 @@ export default function SuddenStopGame() {
       hapticHeavy();
     } else if (distance <= TARGET_ZONE_WIDTH / 2) {
       result = "good";
-      newCombo = combo + 1;
+      newCombo = newCombo + 1;
       points = 50 + newCombo * 10;
       setFlashColor("accent");
       setParticleActive(true);
@@ -117,86 +176,100 @@ export default function SuddenStopGame() {
       playMiss();
       hapticError();
       setTimeout(() => setShakeScreen(false), 400);
+
+      if (mode === "survival") {
+        const newLives = livesRef.current - 1;
+        livesRef.current = newLives;
+        setLives(newLives);
+        playLifeLost();
+      }
     }
 
     setHitResult(result);
+    comboRef.current = newCombo;
     setCombo(newCombo);
-    const newScore = score + points;
+    const newScore = scoreRef.current + points;
+    scoreRef.current = newScore;
     setScore(newScore);
-    const newRound = round + 1;
+    const newRound = roundRef.current + 1;
+    roundRef.current = newRound;
     setRound(newRound);
 
     setTimeout(() => setFlashColor(null), 300);
 
     setTimeout(() => {
-      if (newRound >= ROUNDS_PER_GAME) {
-        if (newScore > highScore) {
-          setHighScore(newScore);
-          localStorage.setItem("suddenstop_high", newScore.toString());
-        }
-        setGameState("gameover");
-        playGameOver();
-        hapticError();
+      // Check game over conditions
+      if (mode === "classic" && newRound >= ROUNDS_PER_GAME) {
+        endGame(newScore);
+      } else if (mode === "survival" && livesRef.current <= 0) {
+        endGame(newScore);
       } else {
+        // Continue
         speedRef.current = INITIAL_SPEED + newRound * SPEED_INCREMENT;
         setSpeed(speedRef.current);
-        setGameState("result");
-        setTimeout(() => {
-          setGameState("playing");
+        if (mode !== "timeattack") {
+          setScreen("result");
+          setTimeout(() => {
+            setScreen("playing");
+            startRound();
+          }, 600);
+        } else {
           startRound();
-        }, 800);
+        }
       }
-    }, 600);
-  }, [targetPos, combo, score, round, highScore, startRound]);
+    }, mode === "timeattack" ? 300 : 600);
+  }, [targetPos, mode, startRound, endGame]);
 
   useEffect(() => {
-    return () => cancelAnimationFrame(animRef.current);
-  }, []);
+    return () => { cancelAnimationFrame(animRef.current); stopTimer(); };
+  }, [stopTimer]);
 
   // Keyboard support
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Space" || e.code === "Enter") {
         e.preventDefault();
-        if (gameState === "menu" || gameState === "gameover") startGame();
-        else if (gameState === "playing" && isPlayingRef.current) handleTap();
+        if (screen === "menu") setScreen("modeselect");
+        else if (screen === "modeselect") selectMode("classic");
+        else if (screen === "gameover") setScreen("modeselect");
+        else if (screen === "playing" && isPlayingRef.current) handleTap();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [gameState, handleTap, startGame]);
+  }, [screen, handleTap, selectMode]);
 
   return (
     <div
       className={`flex flex-col items-center justify-center min-h-screen bg-background transition-transform duration-100 ${shakeScreen ? "translate-x-1" : ""}`}
       onClick={() => {
-        if (gameState === "playing" && isPlayingRef.current) handleTap();
+        if (screen === "playing" && isPlayingRef.current) handleTap();
       }}
       onTouchStart={(e) => {
-        if (gameState === "playing" && isPlayingRef.current) {
+        if (screen === "playing" && isPlayingRef.current) {
           e.preventDefault();
           handleTap();
         }
       }}
     >
-      {/* Flash overlay */}
       {flashColor && (
         <div
           className={`fixed inset-0 pointer-events-none z-50 transition-opacity duration-300 ${
-            flashColor === "primary"
-              ? "bg-primary/10"
-              : flashColor === "accent"
-              ? "bg-accent/10"
+            flashColor === "primary" ? "bg-primary/10"
+              : flashColor === "accent" ? "bg-accent/10"
               : "bg-destructive/10"
           }`}
         />
       )}
 
-      {gameState === "menu" && <MenuScreen highScore={highScore} onStart={startGame} />}
-      {gameState === "gameover" && (
-        <GameOverScreen score={score} highScore={highScore} onRestart={startGame} />
+      {screen === "menu" && <MenuScreen highScore={highScore} onStart={() => setScreen("modeselect")} onSettings={() => setScreen("settings")} onLeaderboard={() => setScreen("leaderboard")} />}
+      {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
+      {screen === "settings" && <SettingsScreen settings={settings} onUpdate={updateSettings} onBack={() => setScreen("menu")} />}
+      {screen === "leaderboard" && <LeaderboardScreen onBack={() => setScreen("menu")} />}
+      {screen === "gameover" && (
+        <GameOverScreen score={score} highScore={highScore} mode={mode} onRestart={() => setScreen("modeselect")} />
       )}
-      {(gameState === "playing" || gameState === "result") && (
+      {(screen === "playing" || screen === "result") && (
         <PlayScreen
           score={score}
           round={round}
@@ -207,13 +280,17 @@ export default function SuddenStopGame() {
           hitResult={hitResult}
           particleActive={particleActive}
           particleKey={particleKey}
+          mode={mode}
+          lives={lives}
+          timeLeft={timeLeft}
         />
       )}
     </div>
   );
 }
 
-function MenuScreen({ highScore, onStart }: { highScore: number; onStart: () => void }) {
+/* ---- MENU ---- */
+function MenuScreen({ highScore, onStart, onSettings, onLeaderboard }: { highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void }) {
   return (
     <div className="flex flex-col items-center gap-8 px-6 animate-in fade-in duration-500">
       <div className="text-center">
@@ -233,43 +310,92 @@ function MenuScreen({ highScore, onStart }: { highScore: number; onStart: () => 
       {highScore > 0 && (
         <div className="neon-border rounded-lg px-6 py-3 bg-muted/30">
           <span className="text-xs text-muted-foreground tracking-widest uppercase">Best</span>
-          <span className="text-2xl font-bold text-primary ml-3 font-[var(--font-display)]">
-            {highScore}
-          </span>
+          <span className="text-2xl font-bold text-primary ml-3 font-[var(--font-display)]">{highScore}</span>
         </div>
       )}
 
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onStart();
-        }}
+        onClick={(e) => { e.stopPropagation(); onStart(); }}
         className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-lg tracking-widest uppercase px-12 py-4 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
       >
-        START
+        PLAY
       </button>
+
+      <div className="flex gap-4">
+        <button
+          onClick={(e) => { e.stopPropagation(); onLeaderboard(); }}
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-6 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+        >
+          🏆 SCORES
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onSettings(); }}
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-6 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+        >
+          ⚙ SETTINGS
+        </button>
+      </div>
 
       <span className="text-muted-foreground/50 text-xs tracking-wider">TAP or SPACE to play</span>
     </div>
   );
 }
 
-function GameOverScreen({
-  score,
-  highScore,
-  onRestart,
-}: {
-  score: number;
-  highScore: number;
-  onRestart: () => void;
-}) {
+/* ---- MODE SELECT ---- */
+function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: GameMode) => void; onBack: () => void }) {
+  const modes: { mode: GameMode; label: string; desc: string; icon: string }[] = [
+    { mode: "classic", label: "CLASSIC", desc: `${ROUNDS_PER_GAME} rounds, increasing speed`, icon: "🎯" },
+    { mode: "survival", label: "SURVIVAL", desc: `${SURVIVAL_LIVES} lives, endless rounds`, icon: "❤️" },
+    { mode: "timeattack", label: "TIME ATTACK", desc: `${TIMEATTACK_DURATION}s to score max`, icon: "⏱" },
+  ];
+
+  return (
+    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500 w-full max-w-[340px]">
+      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">
+        SELECT MODE
+      </h2>
+
+      <div className="flex flex-col gap-3 w-full">
+        {modes.map(({ mode, label, desc, icon }) => (
+          <button
+            key={mode}
+            onClick={(e) => { e.stopPropagation(); onSelect(mode); }}
+            className="neon-border bg-muted/30 hover:bg-primary/10 text-left p-4 rounded-xl transition-all duration-200 active:scale-[0.98] group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{icon}</span>
+              <div>
+                <span className="text-sm font-bold text-foreground tracking-widest group-hover:text-primary transition-colors font-[var(--font-display)]">
+                  {label}
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={(e) => { e.stopPropagation(); onBack(); }}
+        className="text-muted-foreground text-xs tracking-widest uppercase hover:text-foreground transition-colors font-[var(--font-display)] mt-2"
+      >
+        ← BACK
+      </button>
+    </div>
+  );
+}
+
+/* ---- GAME OVER ---- */
+function GameOverScreen({ score, highScore, mode, onRestart }: { score: number; highScore: number; mode: GameMode; onRestart: () => void }) {
   const isNewBest = score >= highScore && score > 0;
+  const modeLabel = mode === "classic" ? "CLASSIC" : mode === "survival" ? "SURVIVAL" : "TIME ATTACK";
 
   return (
     <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
       <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">
         GAME OVER
       </h2>
+      <span className="text-xs text-primary tracking-widest uppercase font-[var(--font-display)]">{modeLabel}</span>
 
       <div className="flex flex-col items-center gap-2">
         <span className="text-xs text-muted-foreground tracking-widest uppercase">Score</span>
@@ -277,24 +403,17 @@ function GameOverScreen({
           {score}
         </span>
         {isNewBest && (
-          <span className="text-accent text-xs tracking-widest uppercase animate-pulse">
-            ★ NEW BEST ★
-          </span>
+          <span className="text-accent text-xs tracking-widest uppercase animate-pulse">★ NEW BEST ★</span>
         )}
       </div>
 
       <div className="neon-border rounded-lg px-6 py-2 bg-muted/30">
         <span className="text-xs text-muted-foreground tracking-widest uppercase">Best</span>
-        <span className="text-xl font-bold text-primary ml-3 font-[var(--font-display)]">
-          {highScore}
-        </span>
+        <span className="text-xl font-bold text-primary ml-3 font-[var(--font-display)]">{highScore}</span>
       </div>
 
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRestart();
-        }}
+        onClick={(e) => { e.stopPropagation(); onRestart(); }}
         className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-lg tracking-widest uppercase px-12 py-4 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] mt-2"
       >
         RETRY
@@ -303,26 +422,12 @@ function GameOverScreen({
   );
 }
 
+/* ---- PLAY SCREEN ---- */
 function PlayScreen({
-  score,
-  round,
-  combo,
-  speed,
-  objectPos,
-  targetPos,
-  hitResult,
-  particleActive,
-  particleKey,
+  score, round, combo, speed, objectPos, targetPos, hitResult, particleActive, particleKey, mode, lives, timeLeft,
 }: {
-  score: number;
-  round: number;
-  combo: number;
-  speed: number;
-  objectPos: number;
-  targetPos: number;
-  hitResult: HitResult;
-  particleActive: boolean;
-  particleKey: number;
+  score: number; round: number; combo: number; speed: number; objectPos: number; targetPos: number;
+  hitResult: HitResult; particleActive: boolean; particleKey: number; mode: GameMode; lives: number; timeLeft: number;
 }) {
   return (
     <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[380px]">
@@ -330,23 +435,37 @@ function PlayScreen({
       <div className="flex items-center justify-between w-full">
         <div className="flex flex-col items-start">
           <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Score</span>
-          <span className="text-2xl font-bold text-primary font-[var(--font-display)] text-glow">
-            {score}
-          </span>
+          <span className="text-2xl font-bold text-primary font-[var(--font-display)] text-glow">{score}</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Round</span>
-          <span className="text-lg font-bold text-foreground font-[var(--font-display)]">
-            {round + 1}/{ROUNDS_PER_GAME}
-          </span>
+          {mode === "classic" && (
+            <>
+              <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Round</span>
+              <span className="text-lg font-bold text-foreground font-[var(--font-display)]">{round + 1}/{ROUNDS_PER_GAME}</span>
+            </>
+          )}
+          {mode === "survival" && (
+            <>
+              <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Lives</span>
+              <span className="text-lg font-bold text-destructive font-[var(--font-display)]">
+                {"❤️".repeat(lives)}{"🖤".repeat(Math.max(0, SURVIVAL_LIVES - lives))}
+              </span>
+            </>
+          )}
+          {mode === "timeattack" && (
+            <>
+              <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Time</span>
+              <span className={`text-lg font-bold font-[var(--font-display)] ${timeLeft <= 5 ? "text-destructive animate-pulse text-glow-danger" : "text-foreground"}`}>
+                {timeLeft}s
+              </span>
+            </>
+          )}
         </div>
         <div className="flex flex-col items-end">
           {combo > 1 && (
             <>
               <span className="text-[10px] text-accent tracking-widest uppercase">Combo</span>
-              <span className="text-2xl font-bold text-accent font-[var(--font-display)] text-glow-warning">
-                x{combo}
-              </span>
+              <span className="text-2xl font-bold text-accent font-[var(--font-display)] text-glow-warning">x{combo}</span>
             </>
           )}
         </div>
@@ -365,97 +484,53 @@ function PlayScreen({
 
       {/* Track */}
       <div className="relative w-[320px] h-20 bg-muted/50 rounded-2xl overflow-hidden border border-border">
-        {/* Grid lines */}
         {Array.from({ length: 16 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute top-0 bottom-0 w-px bg-border/30"
-            style={{ left: `${(i + 1) * (320 / 17)}px` }}
-          />
+          <div key={i} className="absolute top-0 bottom-0 w-px bg-border/30" style={{ left: `${(i + 1) * (320 / 17)}px` }} />
         ))}
 
-        {/* Target zone */}
         <div
           className={`absolute top-0 bottom-0 rounded-lg transition-colors duration-200 ${
-            hitResult === "perfect"
-              ? "bg-primary/40 shadow-[0_0_30px_hsl(var(--game-neon)/0.5)]"
-              : hitResult === "good"
-              ? "bg-accent/30"
-              : hitResult === "miss"
-              ? "bg-destructive/20"
+            hitResult === "perfect" ? "bg-primary/40 shadow-[0_0_30px_hsl(var(--game-neon)/0.5)]"
+              : hitResult === "good" ? "bg-accent/30"
+              : hitResult === "miss" ? "bg-destructive/20"
               : "bg-primary/15 border border-primary/30"
           }`}
           style={{ left: targetPos, width: TARGET_ZONE_WIDTH }}
         >
-          {/* Perfect zone center line */}
           <div className="absolute top-0 bottom-0 left-1/2 -translate-x-px w-0.5 bg-primary/60" />
         </div>
 
-        {/* Streak flame effect */}
         <StreakFlame combo={combo} objectPos={objectPos} />
 
-        {/* Particle explosion */}
         {particleActive && hitResult && hitResult !== "miss" && (
-          <ParticleExplosion
-            key={particleKey}
-            x={objectPos + OBJECT_SIZE / 2}
-            y={40}
-            type={hitResult as "perfect" | "good"}
-            active={true}
-          />
+          <ParticleExplosion key={particleKey} x={objectPos + OBJECT_SIZE / 2} y={40} type={hitResult as "perfect" | "good"} active={true} />
         )}
 
-        {/* Moving object */}
         <div
           className={`absolute top-1/2 -translate-y-1/2 rounded-full transition-none ${
             hitResult
-              ? hitResult === "miss"
-                ? "bg-destructive shadow-[0_0_15px_hsl(var(--game-danger)/0.6)]"
+              ? hitResult === "miss" ? "bg-destructive shadow-[0_0_15px_hsl(var(--game-danger)/0.6)]"
                 : "bg-primary shadow-[0_0_15px_hsl(var(--game-neon)/0.6)]"
               : "bg-secondary shadow-[0_0_15px_hsl(280_80%_60%/0.5)]"
           }`}
-          style={{
-            left: objectPos,
-            width: OBJECT_SIZE,
-            height: OBJECT_SIZE,
-          }}
+          style={{ left: objectPos, width: OBJECT_SIZE, height: OBJECT_SIZE }}
         >
-          {/* Inner glow for combo streaks */}
           {combo >= 3 && !hitResult && (
-            <div
-              className="absolute inset-0 rounded-full animate-pulse"
-              style={{
-                background: combo >= 5
-                  ? 'radial-gradient(circle, hsl(50 100% 70% / 0.4), transparent)'
-                  : 'radial-gradient(circle, hsl(35 100% 60% / 0.3), transparent)',
-              }}
-            />
+            <div className="absolute inset-0 rounded-full animate-pulse" style={{
+              background: combo >= 5
+                ? 'radial-gradient(circle, hsl(50 100% 70% / 0.4), transparent)'
+                : 'radial-gradient(circle, hsl(35 100% 60% / 0.3), transparent)',
+            }} />
           )}
         </div>
       </div>
 
       {/* Result text */}
       <div className="h-10 flex items-center justify-center">
-        {hitResult === "perfect" && (
-          <span className="text-primary text-2xl font-black tracking-widest text-glow animate-in zoom-in duration-200 font-[var(--font-display)]">
-            PERFECT!
-          </span>
-        )}
-        {hitResult === "good" && (
-          <span className="text-accent text-xl font-bold tracking-widest text-glow-warning animate-in zoom-in duration-200 font-[var(--font-display)]">
-            GOOD
-          </span>
-        )}
-        {hitResult === "miss" && (
-          <span className="text-destructive text-xl font-bold tracking-widest text-glow-danger animate-in zoom-in duration-200 font-[var(--font-display)]">
-            MISS
-          </span>
-        )}
-        {!hitResult && (
-          <span className="text-muted-foreground/60 text-sm tracking-widest animate-pulse">
-            TAP NOW
-          </span>
-        )}
+        {hitResult === "perfect" && <span className="text-primary text-2xl font-black tracking-widest text-glow animate-in zoom-in duration-200 font-[var(--font-display)]">PERFECT!</span>}
+        {hitResult === "good" && <span className="text-accent text-xl font-bold tracking-widest text-glow-warning animate-in zoom-in duration-200 font-[var(--font-display)]">GOOD</span>}
+        {hitResult === "miss" && <span className="text-destructive text-xl font-bold tracking-widest text-glow-danger animate-in zoom-in duration-200 font-[var(--font-display)]">MISS</span>}
+        {!hitResult && <span className="text-muted-foreground/60 text-sm tracking-widest animate-pulse">TAP NOW</span>}
       </div>
     </div>
   );
