@@ -3,10 +3,13 @@ import { ParticleExplosion, StreakFlame } from "./Particles";
 import { playPerfect, playGood, playMiss, playGameOver, playStart, playLifeLost, playTick, hapticLight, hapticMedium, hapticHeavy, hapticError, setVolume, setHapticEnabled } from "./audio";
 import { useSettings } from "./useSettings";
 import SettingsScreen from "./Settings";
-import LeaderboardScreen, { addLeaderboardEntry, getLeaderboard } from "./Leaderboard";
+import LeaderboardScreen, { addLeaderboardEntry } from "./Leaderboard";
+import TutorialOverlay, { hasTutorialBeenSeen } from "./Tutorial";
+import SkinsScreen from "./SkinsScreen";
+import { getSelectedSkin, type Skin } from "./skins";
 
 export type GameMode = "classic" | "survival" | "timeattack";
-type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "playing" | "result" | "gameover";
+type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "skins" | "playing" | "result" | "gameover";
 type HitResult = "perfect" | "good" | "miss" | null;
 
 const TRACK_WIDTH = 320;
@@ -41,6 +44,8 @@ export default function SuddenStopGame() {
   const [particleKey, setParticleKey] = useState(0);
   const [lives, setLives] = useState(SURVIVAL_LIVES);
   const [timeLeft, setTimeLeft] = useState(TIMEATTACK_DURATION);
+  const [showTutorial, setShowTutorial] = useState(!hasTutorialBeenSeen());
+  const [activeSkin, setActiveSkin] = useState<Skin>(() => getSelectedSkin(0));
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -58,6 +63,11 @@ export default function SuddenStopGame() {
     setVolume(settings.volume);
     setHapticEnabled(settings.hapticEnabled);
   }, [settings]);
+
+  // Refresh skin when returning from skins screen or when highScore changes
+  useEffect(() => {
+    setActiveSkin(getSelectedSkin(highScore));
+  }, [highScore, screen]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -198,13 +208,11 @@ export default function SuddenStopGame() {
     setTimeout(() => setFlashColor(null), 300);
 
     setTimeout(() => {
-      // Check game over conditions
       if (mode === "classic" && newRound >= ROUNDS_PER_GAME) {
         endGame(newScore);
       } else if (mode === "survival" && livesRef.current <= 0) {
         endGame(newScore);
       } else {
-        // Continue
         speedRef.current = INITIAL_SPEED + newRound * SPEED_INCREMENT;
         setSpeed(speedRef.current);
         if (mode !== "timeattack") {
@@ -229,6 +237,7 @@ export default function SuddenStopGame() {
     const handler = (e: KeyboardEvent) => {
       if (e.code === "Space" || e.code === "Enter") {
         e.preventDefault();
+        if (showTutorial) return;
         if (screen === "menu") setScreen("modeselect");
         else if (screen === "modeselect") selectMode("classic");
         else if (screen === "gameover") setScreen("modeselect");
@@ -237,7 +246,7 @@ export default function SuddenStopGame() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [screen, handleTap, selectMode]);
+  }, [screen, handleTap, selectMode, showTutorial]);
 
   return (
     <div
@@ -252,6 +261,10 @@ export default function SuddenStopGame() {
         }
       }}
     >
+      {/* Tutorial overlay */}
+      {showTutorial && <TutorialOverlay onComplete={() => setShowTutorial(false)} />}
+
+      {/* Flash overlay */}
       {flashColor && (
         <div
           className={`fixed inset-0 pointer-events-none z-50 transition-opacity duration-300 ${
@@ -262,10 +275,19 @@ export default function SuddenStopGame() {
         />
       )}
 
-      {screen === "menu" && <MenuScreen highScore={highScore} onStart={() => setScreen("modeselect")} onSettings={() => setScreen("settings")} onLeaderboard={() => setScreen("leaderboard")} />}
+      {screen === "menu" && (
+        <MenuScreen
+          highScore={highScore}
+          onStart={() => setScreen("modeselect")}
+          onSettings={() => setScreen("settings")}
+          onLeaderboard={() => setScreen("leaderboard")}
+          onSkins={() => setScreen("skins")}
+        />
+      )}
       {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
       {screen === "settings" && <SettingsScreen settings={settings} onUpdate={updateSettings} onBack={() => setScreen("menu")} />}
       {screen === "leaderboard" && <LeaderboardScreen onBack={() => setScreen("menu")} />}
+      {screen === "skins" && <SkinsScreen highScore={highScore} onBack={() => setScreen("menu")} />}
       {screen === "gameover" && (
         <GameOverScreen score={score} highScore={highScore} mode={mode} onRestart={() => setScreen("modeselect")} />
       )}
@@ -283,6 +305,7 @@ export default function SuddenStopGame() {
           mode={mode}
           lives={lives}
           timeLeft={timeLeft}
+          skin={activeSkin}
         />
       )}
     </div>
@@ -290,9 +313,11 @@ export default function SuddenStopGame() {
 }
 
 /* ---- MENU ---- */
-function MenuScreen({ highScore, onStart, onSettings, onLeaderboard }: { highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void }) {
+function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onSkins }: {
+  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onSkins: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center gap-8 px-6 animate-in fade-in duration-500">
+    <div className="flex flex-col items-center gap-7 px-6 animate-in fade-in duration-500">
       <div className="text-center">
         <h1 className="text-4xl sm:text-5xl font-black tracking-wider text-primary text-glow mb-2">
           SUDDEN
@@ -321,16 +346,22 @@ function MenuScreen({ highScore, onStart, onSettings, onLeaderboard }: { highSco
         PLAY
       </button>
 
-      <div className="flex gap-4">
+      <div className="flex gap-3 flex-wrap justify-center">
         <button
           onClick={(e) => { e.stopPropagation(); onLeaderboard(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-6 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
         >
           🏆 SCORES
         </button>
         <button
+          onClick={(e) => { e.stopPropagation(); onSkins(); }}
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+        >
+          🎨 SKINS
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onSettings(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-6 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-xs tracking-widest uppercase px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
         >
           ⚙ SETTINGS
         </button>
@@ -424,11 +455,24 @@ function GameOverScreen({ score, highScore, mode, onRestart }: { score: number; 
 
 /* ---- PLAY SCREEN ---- */
 function PlayScreen({
-  score, round, combo, speed, objectPos, targetPos, hitResult, particleActive, particleKey, mode, lives, timeLeft,
+  score, round, combo, speed, objectPos, targetPos, hitResult, particleActive, particleKey, mode, lives, timeLeft, skin,
 }: {
   score: number; round: number; combo: number; speed: number; objectPos: number; targetPos: number;
   hitResult: HitResult; particleActive: boolean; particleKey: number; mode: GameMode; lives: number; timeLeft: number;
+  skin: Skin;
 }) {
+  const ballShape = skin.shape === "diamond"
+    ? "rotate-45 rounded-sm"
+    : skin.shape === "star"
+    ? "rounded-sm rotate-[22deg]"
+    : "rounded-full";
+
+  const ballStyle: React.CSSProperties = hitResult
+    ? hitResult === "miss"
+      ? { background: "hsl(0 85% 55%)", boxShadow: "0 0 15px hsl(0 85% 55% / 0.6)" }
+      : { background: skin.color, boxShadow: `0 0 20px ${skin.glow}` }
+    : { background: skin.color, boxShadow: `0 0 15px ${skin.glow}` };
+
   return (
     <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[380px]">
       {/* HUD */}
@@ -488,6 +532,7 @@ function PlayScreen({
           <div key={i} className="absolute top-0 bottom-0 w-px bg-border/30" style={{ left: `${(i + 1) * (320 / 17)}px` }} />
         ))}
 
+        {/* Target zone */}
         <div
           className={`absolute top-0 bottom-0 rounded-lg transition-colors duration-200 ${
             hitResult === "perfect" ? "bg-primary/40 shadow-[0_0_30px_hsl(var(--game-neon)/0.5)]"
@@ -506,17 +551,13 @@ function PlayScreen({
           <ParticleExplosion key={particleKey} x={objectPos + OBJECT_SIZE / 2} y={40} type={hitResult as "perfect" | "good"} active={true} />
         )}
 
+        {/* Moving object with skin */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 rounded-full transition-none ${
-            hitResult
-              ? hitResult === "miss" ? "bg-destructive shadow-[0_0_15px_hsl(var(--game-danger)/0.6)]"
-                : "bg-primary shadow-[0_0_15px_hsl(var(--game-neon)/0.6)]"
-              : "bg-secondary shadow-[0_0_15px_hsl(280_80%_60%/0.5)]"
-          }`}
-          style={{ left: objectPos, width: OBJECT_SIZE, height: OBJECT_SIZE }}
+          className={`absolute top-1/2 -translate-y-1/2 transition-none ${ballShape}`}
+          style={{ left: objectPos, width: OBJECT_SIZE, height: OBJECT_SIZE, ...ballStyle }}
         >
           {combo >= 3 && !hitResult && (
-            <div className="absolute inset-0 rounded-full animate-pulse" style={{
+            <div className={`absolute inset-0 animate-pulse ${ballShape}`} style={{
               background: combo >= 5
                 ? 'radial-gradient(circle, hsl(50 100% 70% / 0.4), transparent)'
                 : 'radial-gradient(circle, hsl(35 100% 60% / 0.3), transparent)',
