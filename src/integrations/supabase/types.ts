@@ -14,13 +14,82 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_challenges: {
+        Row: {
+          bonus_multiplier: number
+          challenge_date: string
+          created_at: string
+          id: string
+          modifier: string
+          seed: number
+        }
+        Insert: {
+          bonus_multiplier?: number
+          challenge_date: string
+          created_at?: string
+          id?: string
+          modifier: string
+          seed: number
+        }
+        Update: {
+          bonus_multiplier?: number
+          challenge_date?: string
+          created_at?: string
+          id?: string
+          modifier?: string
+          seed?: number
+        }
+        Relationships: []
+      }
+      global_scores: {
+        Row: {
+          created_at: string
+          daily_challenge_id: string | null
+          id: string
+          mode: string
+          player_name: string
+          score: number
+        }
+        Insert: {
+          created_at?: string
+          daily_challenge_id?: string | null
+          id?: string
+          mode: string
+          player_name: string
+          score: number
+        }
+        Update: {
+          created_at?: string
+          daily_challenge_id?: string | null
+          id?: string
+          mode?: string
+          player_name?: string
+          score?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_today_challenge: {
+        Args: never
+        Returns: {
+          bonus_multiplier: number
+          challenge_date: string
+          created_at: string
+          id: string
+          modifier: string
+          seed: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "daily_challenges"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
