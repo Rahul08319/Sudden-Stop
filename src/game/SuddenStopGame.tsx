@@ -514,6 +514,10 @@ function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, on
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           🎨 SKINS
         </button>
+        <button onClick={(e) => { e.stopPropagation(); onPowerUpGuide(); }}
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
+          ⚡ POWER-UPS
+        </button>
         <button onClick={(e) => { e.stopPropagation(); onSettings(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           ⚙ SETTINGS
