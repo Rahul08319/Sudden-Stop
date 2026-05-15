@@ -57,6 +57,8 @@ export default function SuddenStopGame() {
   const [activeSkin, setActiveSkin] = useState<Skin>(() => getSelectedSkin(0));
   const [activePowerUp, setActivePowerUp] = useState<PowerUp | null>(null);
   const [powerUpToast, setPowerUpToast] = useState<PowerUp | null>(null);
+  const [showPowerUpGuide, setShowPowerUpGuide] = useState(false);
+  const [dailyResult, setDailyResult] = useState<{ score: number; isNewBest: boolean; previousBest: number; pendingSync: boolean; challenge: DailyChallenge } | null>(null);
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
