@@ -631,15 +631,13 @@ function PlayScreen({
 
   return (
     <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[380px]">
-      {/* Daily challenge banner */}
-      {isDaily && dailyMod && (
-        <div className="w-full flex items-center justify-center gap-2 neon-border bg-accent/5 rounded-lg px-3 py-1.5">
-          <span className="text-base">{MODIFIER_INFO[dailyMod].icon}</span>
-          <span className="text-[10px] text-accent font-bold tracking-widest font-[var(--font-display)]">
-            DAILY · {MODIFIER_INFO[dailyMod].label}
-          </span>
-        </div>
-      )}
+      {/* Active modifier panel (daily + power-up combined) */}
+      <ActiveModifierPanel
+        activePowerUp={activePowerUp}
+        dailyLabel={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].label : null}
+        dailyIcon={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].icon : null}
+        dailyDesc={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].desc : null}
+      />
 
       {/* HUD */}
       <div className="flex items-center justify-between w-full">
@@ -680,16 +678,6 @@ function PlayScreen({
           )}
         </div>
       </div>
-
-      {/* Active power-up indicator */}
-      {activePowerUp && (
-        <div className="w-full flex items-center justify-center gap-2 bg-accent/10 border border-accent/40 rounded-full px-3 py-1">
-          <span className="text-base">{activePowerUp.icon}</span>
-          <span className="text-[10px] text-accent font-bold tracking-widest font-[var(--font-display)]">
-            {activePowerUp.label} ACTIVE
-          </span>
-        </div>
-      )}
 
       {/* Speed indicator */}
       <div className="flex items-center gap-2 w-full">
