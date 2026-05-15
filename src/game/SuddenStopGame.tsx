@@ -112,12 +112,24 @@ export default function SuddenStopGame() {
     const wasDaily = isDailyRef.current;
     const dailyId = dailyRef.current?.id ?? null;
     addLeaderboardEntry({ name: "PLAYER", score: finalScore, mode, date: Date.now() });
-    setScreen("gameover");
     playGameOver();
     hapticError();
-    // Submit to cloud (fire and forget)
-    submitScore(finalScore, wasDaily ? "daily" : mode, wasDaily ? dailyId : null).catch(() => {});
-    if (wasDaily && dailyId) markDailyCompleted(dailyId, finalScore);
+    // Submit via offline-friendly queue (auto-retries when network returns)
+    const submission = await submitScoreQueued(finalScore, wasDaily ? "daily" : mode, wasDaily ? dailyId : null).catch(() => ({ ok: false, queued: true }));
+    if (wasDaily && dailyId && dailyRef.current) {
+      markDailyCompleted(dailyId, finalScore);
+      const { isNewBest, previousBest } = recordDailyPB(dailyId, finalScore);
+      setDailyResult({
+        score: finalScore,
+        isNewBest,
+        previousBest,
+        pendingSync: !submission.ok && submission.queued,
+        challenge: dailyRef.current,
+      });
+      setScreen("dailyresult");
+    } else {
+      setScreen("gameover");
+    }
   }, [highScore, mode, stopTimer]);
 
   const startRound = useCallback(() => {
