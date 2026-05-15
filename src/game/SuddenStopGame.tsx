@@ -428,6 +428,17 @@ export default function SuddenStopGame() {
           onMenu={() => setScreen("menu")}
         />
       )}
+      {screen === "dailyresult" && dailyResult && (
+        <DailyResultScreen
+          challenge={dailyResult.challenge}
+          score={dailyResult.score}
+          previousBest={dailyResult.previousBest}
+          isNewBest={dailyResult.isNewBest}
+          pendingSync={dailyResult.pendingSync}
+          onRetry={() => { setDailyResult(null); setScreen("daily"); }}
+          onMenu={() => { setDailyResult(null); setScreen("menu"); }}
+        />
+      )}
       {(screen === "playing" || screen === "result") && (
         <PlayScreen
           score={score}
