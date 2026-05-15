@@ -465,8 +465,8 @@ export default function SuddenStopGame() {
 }
 
 /* ---- MENU ---- */
-function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily }: {
-  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void;
+function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily, onPowerUpGuide }: {
+  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void; onPowerUpGuide: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
