@@ -9,12 +9,14 @@ import DailyChallengeScreen from "./DailyChallengeScreen";
 import TutorialOverlay, { hasTutorialBeenSeen } from "./Tutorial";
 import SkinsScreen from "./SkinsScreen";
 import { getSelectedSkin, type Skin } from "./skins";
-import { submitScore } from "./cloudLeaderboard";
+import { submitScoreQueued } from "./offlineQueue";
 import { type DailyChallenge, type DailyModifier, MODIFIER_INFO, markDailyCompleted } from "./dailyChallenge";
 import { rollRandomPowerUp, type PowerUp } from "./powerups";
+import PowerUpGuide, { ActiveModifierPanel } from "./PowerUpGuide";
+import DailyResultScreen, { recordDailyPB } from "./DailyResultScreen";
 
 export type GameMode = "classic" | "survival" | "timeattack";
-type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover";
+type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
 type HitResult = "perfect" | "good" | "miss" | null;
 
 const TRACK_WIDTH = 320;
@@ -55,6 +57,8 @@ export default function SuddenStopGame() {
   const [activeSkin, setActiveSkin] = useState<Skin>(() => getSelectedSkin(0));
   const [activePowerUp, setActivePowerUp] = useState<PowerUp | null>(null);
   const [powerUpToast, setPowerUpToast] = useState<PowerUp | null>(null);
+  const [showPowerUpGuide, setShowPowerUpGuide] = useState(false);
+  const [dailyResult, setDailyResult] = useState<{ score: number; isNewBest: boolean; previousBest: number; pendingSync: boolean; challenge: DailyChallenge } | null>(null);
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -108,12 +112,24 @@ export default function SuddenStopGame() {
     const wasDaily = isDailyRef.current;
     const dailyId = dailyRef.current?.id ?? null;
     addLeaderboardEntry({ name: "PLAYER", score: finalScore, mode, date: Date.now() });
-    setScreen("gameover");
     playGameOver();
     hapticError();
-    // Submit to cloud (fire and forget)
-    submitScore(finalScore, wasDaily ? "daily" : mode, wasDaily ? dailyId : null).catch(() => {});
-    if (wasDaily && dailyId) markDailyCompleted(dailyId, finalScore);
+    // Submit via offline-friendly queue (auto-retries when network returns)
+    const submission = await submitScoreQueued(finalScore, wasDaily ? "daily" : mode, wasDaily ? dailyId : null).catch(() => ({ ok: false, queued: true }));
+    if (wasDaily && dailyId && dailyRef.current) {
+      markDailyCompleted(dailyId, finalScore);
+      const { isNewBest, previousBest } = recordDailyPB(dailyId, finalScore);
+      setDailyResult({
+        score: finalScore,
+        isNewBest,
+        previousBest,
+        pendingSync: !submission.ok && submission.queued,
+        challenge: dailyRef.current,
+      });
+      setScreen("dailyresult");
+    } else {
+      setScreen("gameover");
+    }
   }, [highScore, mode, stopTimer]);
 
   const startRound = useCallback(() => {
@@ -381,6 +397,8 @@ export default function SuddenStopGame() {
         </div>
       )}
 
+      {showPowerUpGuide && <PowerUpGuide onClose={() => setShowPowerUpGuide(false)} />}
+
       {screen === "menu" && (
         <MenuScreen
           highScore={highScore}
@@ -390,6 +408,7 @@ export default function SuddenStopGame() {
           onLocal={() => setScreen("leaderboard")}
           onSkins={() => setScreen("skins")}
           onDaily={() => setScreen("daily")}
+          onPowerUpGuide={() => setShowPowerUpGuide(true)}
         />
       )}
       {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
@@ -407,6 +426,17 @@ export default function SuddenStopGame() {
           dailyMod={dailyChallenge?.modifier ?? null}
           onRestart={() => setScreen(isDaily ? "daily" : "modeselect")}
           onMenu={() => setScreen("menu")}
+        />
+      )}
+      {screen === "dailyresult" && dailyResult && (
+        <DailyResultScreen
+          challenge={dailyResult.challenge}
+          score={dailyResult.score}
+          previousBest={dailyResult.previousBest}
+          isNewBest={dailyResult.isNewBest}
+          pendingSync={dailyResult.pendingSync}
+          onRetry={() => { setDailyResult(null); setScreen("daily"); }}
+          onMenu={() => { setDailyResult(null); setScreen("menu"); }}
         />
       )}
       {(screen === "playing" || screen === "result") && (
@@ -435,8 +465,8 @@ export default function SuddenStopGame() {
 }
 
 /* ---- MENU ---- */
-function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily }: {
-  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void;
+function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily, onPowerUpGuide }: {
+  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void; onPowerUpGuide: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
@@ -483,6 +513,10 @@ function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, on
         <button onClick={(e) => { e.stopPropagation(); onSkins(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           🎨 SKINS
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onPowerUpGuide(); }}
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
+          ⚡ POWER-UPS
         </button>
         <button onClick={(e) => { e.stopPropagation(); onSettings(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
@@ -597,15 +631,13 @@ function PlayScreen({
 
   return (
     <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[380px]">
-      {/* Daily challenge banner */}
-      {isDaily && dailyMod && (
-        <div className="w-full flex items-center justify-center gap-2 neon-border bg-accent/5 rounded-lg px-3 py-1.5">
-          <span className="text-base">{MODIFIER_INFO[dailyMod].icon}</span>
-          <span className="text-[10px] text-accent font-bold tracking-widest font-[var(--font-display)]">
-            DAILY · {MODIFIER_INFO[dailyMod].label}
-          </span>
-        </div>
-      )}
+      {/* Active modifier panel (daily + power-up combined) */}
+      <ActiveModifierPanel
+        activePowerUp={activePowerUp}
+        dailyLabel={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].label : null}
+        dailyIcon={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].icon : null}
+        dailyDesc={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].desc : null}
+      />
 
       {/* HUD */}
       <div className="flex items-center justify-between w-full">
@@ -646,16 +678,6 @@ function PlayScreen({
           )}
         </div>
       </div>
-
-      {/* Active power-up indicator */}
-      {activePowerUp && (
-        <div className="w-full flex items-center justify-center gap-2 bg-accent/10 border border-accent/40 rounded-full px-3 py-1">
-          <span className="text-base">{activePowerUp.icon}</span>
-          <span className="text-[10px] text-accent font-bold tracking-widest font-[var(--font-display)]">
-            {activePowerUp.label} ACTIVE
-          </span>
-        </div>
-      )}
 
       {/* Speed indicator */}
       <div className="flex items-center gap-2 w-full">
