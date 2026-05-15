@@ -9,12 +9,14 @@ import DailyChallengeScreen from "./DailyChallengeScreen";
 import TutorialOverlay, { hasTutorialBeenSeen } from "./Tutorial";
 import SkinsScreen from "./SkinsScreen";
 import { getSelectedSkin, type Skin } from "./skins";
-import { submitScore } from "./cloudLeaderboard";
+import { submitScoreQueued } from "./offlineQueue";
 import { type DailyChallenge, type DailyModifier, MODIFIER_INFO, markDailyCompleted } from "./dailyChallenge";
 import { rollRandomPowerUp, type PowerUp } from "./powerups";
+import PowerUpGuide, { ActiveModifierPanel } from "./PowerUpGuide";
+import DailyResultScreen, { recordDailyPB } from "./DailyResultScreen";
 
 export type GameMode = "classic" | "survival" | "timeattack";
-type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover";
+type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
 type HitResult = "perfect" | "good" | "miss" | null;
 
 const TRACK_WIDTH = 320;
