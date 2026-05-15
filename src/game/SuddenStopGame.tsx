@@ -397,6 +397,8 @@ export default function SuddenStopGame() {
         </div>
       )}
 
+      {showPowerUpGuide && <PowerUpGuide onClose={() => setShowPowerUpGuide(false)} />}
+
       {screen === "menu" && (
         <MenuScreen
           highScore={highScore}
@@ -406,6 +408,7 @@ export default function SuddenStopGame() {
           onLocal={() => setScreen("leaderboard")}
           onSkins={() => setScreen("skins")}
           onDaily={() => setScreen("daily")}
+          onPowerUpGuide={() => setShowPowerUpGuide(true)}
         />
       )}
       {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
