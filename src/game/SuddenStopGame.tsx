@@ -6,7 +6,7 @@ import SettingsScreen from "./Settings";
 import LeaderboardScreen, { addLeaderboardEntry } from "./Leaderboard";
 import GlobalLeaderboardScreen from "./GlobalLeaderboard";
 import DailyChallengeScreen from "./DailyChallengeScreen";
-import TutorialOverlay, { hasTutorialBeenSeen } from "./Tutorial";
+import TutorialOverlay, { hasTutorialBeenSeen, markTutorialSeen } from "./Tutorial";
 import SkinsScreen from "./SkinsScreen";
 import { getSelectedSkin, type Skin } from "./skins";
 import { submitScoreQueued } from "./offlineQueue";
@@ -14,9 +14,19 @@ import { type DailyChallenge, type DailyModifier, MODIFIER_INFO, markDailyComple
 import { rollRandomPowerUp, type PowerUp } from "./powerups";
 import PowerUpGuide, { ActiveModifierPanel } from "./PowerUpGuide";
 import DailyResultScreen, { recordDailyPB } from "./DailyResultScreen";
+import { createRunSeed, loadBestGhost, saveBestGhost, seededRandom, type GhostRun } from "./ghostReplay";
+import { getWeeklyChallenge, type WeeklyChallenge } from "./weeklyChallenge";
+import {
+  applyPlayablesLocale,
+  isPlayablesEnvironment,
+  loadPersistedGame,
+  savePersistedGame,
+  sendBestScore,
+  subscribeToPlayablesSystem,
+} from "./youtubePlayables";
 
-export type GameMode = "classic" | "survival" | "timeattack";
-type ScreenState = "menu" | "modeselect" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
+export type GameMode = "classic" | "survival" | "timeattack" | "practice";
+type ScreenState = "menu" | "modeselect" | "practice" | "weekly" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
 type HitResult = "perfect" | "good" | "miss" | null;
 
 const TRACK_WIDTH = 320;
@@ -31,14 +41,17 @@ const TIMEATTACK_DURATION = 30;
 
 export default function SuddenStopGame() {
   const { settings, updateSettings } = useSettings();
+  const inPlayables = isPlayablesEnvironment();
   const [screen, setScreen] = useState<ScreenState>("menu");
   const [mode, setMode] = useState<GameMode>("classic");
   const [isDaily, setIsDaily] = useState(false);
+  const [isWeekly, setIsWeekly] = useState(false);
+  const [isGhostReplay, setIsGhostReplay] = useState(false);
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallenge | null>(null);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(0);
   const [highScore, setHighScore] = useState(() => {
-    const saved = localStorage.getItem("suddenstop_high");
+    const saved = isPlayablesEnvironment() ? null : localStorage.getItem("suddenstop_high");
     return saved ? parseInt(saved) : 0;
   });
   const [objectPos, setObjectPos] = useState(0);
@@ -53,12 +66,17 @@ export default function SuddenStopGame() {
   const [particleKey, setParticleKey] = useState(0);
   const [lives, setLives] = useState(SURVIVAL_LIVES);
   const [timeLeft, setTimeLeft] = useState(TIMEATTACK_DURATION);
+  const [playablesAudioEnabled, setPlayablesAudioEnabled] = useState(true);
+  const [isSystemPaused, setIsSystemPaused] = useState(false);
+  const [cloudSaveLoaded, setCloudSaveLoaded] = useState(false);
   const [showTutorial, setShowTutorial] = useState(!hasTutorialBeenSeen());
   const [activeSkin, setActiveSkin] = useState<Skin>(() => getSelectedSkin(0));
   const [activePowerUp, setActivePowerUp] = useState<PowerUp | null>(null);
   const [powerUpToast, setPowerUpToast] = useState<PowerUp | null>(null);
   const [showPowerUpGuide, setShowPowerUpGuide] = useState(false);
   const [dailyResult, setDailyResult] = useState<{ score: number; isNewBest: boolean; previousBest: number; pendingSync: boolean; challenge: DailyChallenge } | null>(null);
+  const [bestGhost, setBestGhost] = useState<GhostRun | null>(loadBestGhost);
+  const [trackScale, setTrackScale] = useState(1);
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -73,16 +91,51 @@ export default function SuddenStopGame() {
   const activePowerUpRef = useRef<PowerUp | null>(null);
   const dailyRef = useRef<DailyChallenge | null>(null);
   const isDailyRef = useRef(false);
+  const timeLeftRef = useRef(TIMEATTACK_DURATION);
+  const systemPausedRef = useRef(false);
+  const wasPlayingBeforePauseRef = useRef(false);
+  const pendingRoundAfterResumeRef = useRef(false);
+  const runSeedRef = useRef(createRunSeed());
+  const randomRef = useRef<() => number>(() => Math.random());
+  const ghostTapRef = useRef<GhostRun["taps"]>([]);
+  const ghostReplayRef = useRef<GhostRun | null>(null);
+  const challengeKindRef = useRef<"daily" | "weekly" | null>(null);
+  const practiceSpeedRef = useRef(INITIAL_SPEED);
 
   // Sync settings to audio module
   useEffect(() => {
-    setVolume(settings.volume);
+    setVolume(playablesAudioEnabled ? settings.volume : 0);
     setHapticEnabled(settings.hapticEnabled);
-  }, [settings]);
+  }, [settings, playablesAudioEnabled]);
 
   useEffect(() => {
     setActiveSkin(getSelectedSkin(highScore));
   }, [highScore, screen]);
+
+  useEffect(() => {
+    const updateScale = () => setTrackScale(Math.min(1, Math.max(0.55, (window.innerWidth - 32) / TRACK_WIDTH)));
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    applyPlayablesLocale();
+    loadPersistedGame().then((saved) => {
+      if (!active) return;
+      if (typeof saved.highScore === "number") setHighScore(saved.highScore);
+      if (saved.settings) updateSettings(saved.settings);
+      if (saved.ghost) setBestGhost(saved.ghost);
+    }).finally(() => {
+      if (active) setCloudSaveLoaded(true);
+    });
+    return () => { active = false; };
+  }, [updateSettings]);
+
+  useEffect(() => {
+    if (cloudSaveLoaded) void savePersistedGame({ highScore, settings, ghost: bestGhost });
+  }, [bestGhost, cloudSaveLoaded, highScore, settings]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -105,17 +158,26 @@ export default function SuddenStopGame() {
     isPlayingRef.current = false;
     cancelAnimationFrame(animRef.current);
     stopTimer();
+    const challengeKind = challengeKindRef.current;
     if (finalScore > highScore) {
       setHighScore(finalScore);
-      localStorage.setItem("suddenstop_high", finalScore.toString());
+      if (!inPlayables) localStorage.setItem("suddenstop_high", finalScore.toString());
+      void sendBestScore(finalScore);
+      if (!challengeKind && mode !== "practice") {
+        const ghost: GhostRun = { seed: runSeedRef.current, mode, score: finalScore, taps: ghostTapRef.current };
+        if (!inPlayables) saveBestGhost(ghost);
+        setBestGhost(ghost);
+      }
     }
-    const wasDaily = isDailyRef.current;
+    const wasDaily = challengeKind === "daily";
     const dailyId = dailyRef.current?.id ?? null;
-    addLeaderboardEntry({ name: "PLAYER", score: finalScore, mode, date: Date.now() });
+    if (!inPlayables) addLeaderboardEntry({ name: "PLAYER", score: finalScore, mode, date: Date.now() });
     playGameOver();
     hapticError();
     // Submit via offline-friendly queue (auto-retries when network returns)
-    const submission = await submitScoreQueued(finalScore, wasDaily ? "daily" : mode, wasDaily ? dailyId : null).catch(() => ({ ok: false, queued: true }));
+    const submission = inPlayables
+      ? { ok: true, queued: false }
+      : await submitScoreQueued(finalScore, challengeKind ?? mode, challengeKind ? dailyId : null).catch(() => ({ ok: false, queued: true }));
     if (wasDaily && dailyId && dailyRef.current) {
       markDailyCompleted(dailyId, finalScore);
       const { isNewBest, previousBest } = recordDailyPB(dailyId, finalScore);
@@ -130,11 +192,47 @@ export default function SuddenStopGame() {
     } else {
       setScreen("gameover");
     }
-  }, [highScore, mode, stopTimer]);
+  }, [highScore, inPlayables, mode, stopTimer]);
+
+  const startCountdown = useCallback(() => {
+    stopTimer();
+    timerRef.current = setInterval(() => {
+      const nextTime = timeLeftRef.current - 1;
+      timeLeftRef.current = nextTime;
+      setTimeLeft(nextTime);
+      if (nextTime <= 5 && nextTime > 0 && !(dailyRef.current?.modifier === "silent_mode")) playTick();
+      if (nextTime <= 0) endGame(scoreRef.current);
+    }, 1000);
+  }, [endGame, stopTimer]);
+
+  const resumeRoundAnimation = useCallback(() => {
+    const animate = () => {
+      if (!isPlayingRef.current || systemPausedRef.current) return;
+      const effectiveSpeed = activePowerUpRef.current?.type === "slow_motion"
+        ? speedRef.current * 0.5
+        : speedRef.current;
+      posRef.current += effectiveSpeed * dirRef.current;
+      if (posRef.current >= TRACK_WIDTH - OBJECT_SIZE) {
+        posRef.current = TRACK_WIDTH - OBJECT_SIZE;
+        dirRef.current = -1;
+      } else if (posRef.current <= 0) {
+        posRef.current = 0;
+        dirRef.current = 1;
+      }
+      setObjectPos(posRef.current);
+      setDirection(dirRef.current);
+      animRef.current = requestAnimationFrame(animate);
+    };
+    animRef.current = requestAnimationFrame(animate);
+  }, []);
 
   const startRound = useCallback(() => {
+    if (systemPausedRef.current) {
+      pendingRoundAfterResumeRef.current = true;
+      return;
+    }
     const zoneW = getZoneWidth();
-    const newTarget = 40 + Math.random() * (TRACK_WIDTH - 80 - zoneW);
+    const newTarget = 40 + randomRef.current() * (TRACK_WIDTH - 80 - zoneW);
     setTargetPos(newTarget);
 
     // Roll a power-up for next round (only if none active)
@@ -149,10 +247,6 @@ export default function SuddenStopGame() {
       }
     }
 
-    // Apply slow-motion power-up
-    const baseSpeed = speedRef.current;
-    const effSpeed = activePowerUpRef.current?.type === "slow_motion" ? baseSpeed * 0.5 : baseSpeed;
-
     // Mirror track modifier: start moving left
     const startDir = isDailyRef.current && dailyRef.current?.modifier === "mirror_track" ? -1 : 1;
     const startPos = startDir === -1 ? TRACK_WIDTH - OBJECT_SIZE : 0;
@@ -165,29 +259,29 @@ export default function SuddenStopGame() {
     setParticleActive(false);
     isPlayingRef.current = true;
 
-    const animate = () => {
-      if (!isPlayingRef.current) return;
-      posRef.current += effSpeed * dirRef.current;
-      if (posRef.current >= TRACK_WIDTH - OBJECT_SIZE) {
-        posRef.current = TRACK_WIDTH - OBJECT_SIZE;
-        dirRef.current = -1;
-      } else if (posRef.current <= 0) {
-        posRef.current = 0;
-        dirRef.current = 1;
-      }
-      setObjectPos(posRef.current);
-      setDirection(dirRef.current);
-      animRef.current = requestAnimationFrame(animate);
-    };
-    animRef.current = requestAnimationFrame(animate);
-  }, [getZoneWidth]);
+    resumeRoundAnimation();
+  }, [getZoneWidth, resumeRoundAnimation]);
 
-  const startGame = useCallback((m: GameMode, daily: DailyChallenge | null = null) => {
+  const startGame = useCallback((m: GameMode, daily: DailyChallenge | null = null, options: {
+    challengeKind?: "daily" | "weekly";
+    seed?: number;
+    ghost?: GhostRun | null;
+    practiceSpeed?: number;
+  } = {}) => {
+    const challengeKind = options.challengeKind ?? null;
     setMode(m);
-    setIsDaily(!!daily);
+    setIsDaily(challengeKind === "daily");
+    setIsWeekly(challengeKind === "weekly");
+    setIsGhostReplay(!!options.ghost);
     setDailyChallenge(daily);
-    isDailyRef.current = !!daily;
+    isDailyRef.current = !!challengeKind;
     dailyRef.current = daily;
+    challengeKindRef.current = challengeKind;
+    runSeedRef.current = options.seed ?? createRunSeed();
+    randomRef.current = seededRandom(runSeedRef.current);
+    ghostTapRef.current = [];
+    ghostReplayRef.current = options.ghost ?? null;
+    practiceSpeedRef.current = options.practiceSpeed ?? INITIAL_SPEED;
     setScore(0);
     scoreRef.current = 0;
     setRound(0);
@@ -197,7 +291,7 @@ export default function SuddenStopGame() {
     setActivePowerUp(null);
     activePowerUpRef.current = null;
 
-    let baseSpeed = INITIAL_SPEED;
+    let baseSpeed = m === "practice" ? practiceSpeedRef.current : INITIAL_SPEED;
     if (daily?.modifier === "double_speed") baseSpeed *= 2;
     speedRef.current = baseSpeed;
     setSpeed(baseSpeed);
@@ -207,33 +301,100 @@ export default function SuddenStopGame() {
     if (daily?.modifier === "one_shot") startLives = 1;
     setLives(startLives);
     livesRef.current = startLives;
-    setTimeLeft(TIMEATTACK_DURATION);
+    timeLeftRef.current = TIMEATTACK_DURATION;
+    setTimeLeft(timeLeftRef.current);
     setScreen("playing");
     if (!(daily?.modifier === "silent_mode")) playStart();
     hapticLight();
 
     if (m === "timeattack") {
-      let t = TIMEATTACK_DURATION;
-      timerRef.current = setInterval(() => {
-        t--;
-        setTimeLeft(t);
-        if (t <= 5 && t > 0 && !(daily?.modifier === "silent_mode")) playTick();
-        if (t <= 0) endGame(scoreRef.current);
-      }, 1000);
+      startCountdown();
     }
 
     setTimeout(() => startRound(), 300);
-  }, [startRound, endGame]);
+  }, [startRound, startCountdown]);
 
-  const selectMode = useCallback((m: GameMode) => {
+  const pauseForSystem = useCallback(() => {
+    systemPausedRef.current = true;
+    wasPlayingBeforePauseRef.current = isPlayingRef.current;
+    void savePersistedGame({ highScore, settings, ghost: bestGhost });
+    if (isPlayingRef.current) {
+      isPlayingRef.current = false;
+      cancelAnimationFrame(animRef.current);
+      if (mode === "timeattack") stopTimer();
+    }
+    setIsSystemPaused(true);
+  }, [bestGhost, highScore, mode, settings, stopTimer]);
+
+  const resumeFromSystem = useCallback(() => {
+    systemPausedRef.current = false;
+    setIsSystemPaused(false);
+    if (pendingRoundAfterResumeRef.current) {
+      pendingRoundAfterResumeRef.current = false;
+      startRound();
+    } else if (wasPlayingBeforePauseRef.current) {
+      isPlayingRef.current = true;
+      resumeRoundAnimation();
+      if (mode === "timeattack") startCountdown();
+    }
+    wasPlayingBeforePauseRef.current = false;
+  }, [mode, resumeRoundAnimation, startCountdown, startRound]);
+
+  useEffect(() => subscribeToPlayablesSystem({
+    onAudioEnabledChange: setPlayablesAudioEnabled,
+    onPause: pauseForSystem,
+    onResume: resumeFromSystem,
+  }), [pauseForSystem, resumeFromSystem]);
+
+  useEffect(() => {
+    window.render_game_to_text = () => JSON.stringify({
+      coordinateSystem: "Track positions run left-to-right from 0 to 320.",
+      screen,
+      mode,
+      score,
+      highScore,
+      round,
+      lives,
+      timeLeft,
+      paused: isSystemPaused,
+      weeklyChallenge: isWeekly,
+      ghostReplay: isGhostReplay,
+      practiceSpeed: mode === "practice" ? practiceSpeedRef.current : null,
+      movingObject: screen === "playing" ? { x: Math.round(objectPos), direction, speed } : null,
+      target: screen === "playing" ? { x: Math.round(targetPos), width: Math.round(getZoneWidth()) } : null,
+      combo,
+      activePowerUp: activePowerUp?.type ?? null,
+    });
+    return () => { delete window.render_game_to_text; };
+  }, [activePowerUp, combo, direction, getZoneWidth, highScore, isGhostReplay, isSystemPaused, isWeekly, lives, mode, objectPos, round, screen, score, speed, targetPos, timeLeft]);
+
+  const selectMode = useCallback((m: Exclude<GameMode, "practice">) => {
     startGame(m, null);
   }, [startGame]);
 
   const startDailyChallenge = useCallback((c: DailyChallenge) => {
     // Daily uses survival-style (one_shot) or default classic-endless
     const baseMode: GameMode = c.modifier === "one_shot" ? "survival" : "survival";
-    startGame(baseMode, c);
+    startGame(baseMode, c, { challengeKind: "daily", seed: c.seed });
   }, [startGame]);
+
+  const startWeeklyChallenge = useCallback((challenge: WeeklyChallenge) => {
+    startGame("survival", {
+      id: challenge.id,
+      challenge_date: challenge.label,
+      modifier: challenge.modifier,
+      bonus_multiplier: challenge.bonusMultiplier,
+      seed: challenge.seed,
+    }, { challengeKind: "weekly", seed: challenge.seed });
+  }, [startGame]);
+
+  const startPractice = useCallback((practiceSpeed: number) => {
+    startGame("practice", null, { practiceSpeed });
+  }, [startGame]);
+
+  const startGhostReplay = useCallback(() => {
+    if (bestGhost) startGame(bestGhost.mode, null, { seed: bestGhost.seed, ghost: bestGhost });
+  }, [bestGhost, startGame]);
 
   const handleTap = useCallback(() => {
     if (!isPlayingRef.current) return;
@@ -300,6 +461,7 @@ export default function SuddenStopGame() {
     }
 
     setHitResult(result);
+    ghostTapRef.current.push({ round: roundRef.current, position: Math.round(posRef.current), result });
     comboRef.current = newCombo;
     setCombo(newCombo);
     const newScore = scoreRef.current + points;
@@ -318,7 +480,7 @@ export default function SuddenStopGame() {
 
     setTimeout(() => {
       const dailyEndless = isDailyRef.current; // daily is endless until life lost
-      const classicEnd = mode === "classic" && !dailyEndless && newRound >= ROUNDS_PER_GAME;
+      const classicEnd = (mode === "classic" || mode === "practice") && !dailyEndless && newRound >= ROUNDS_PER_GAME;
       const survivalEnd = (mode === "survival" || dailyEndless) && livesRef.current <= 0;
 
       if (classicEnd || survivalEnd) {
@@ -327,7 +489,7 @@ export default function SuddenStopGame() {
         // Speed scaling
         const baseInc = reverseCombo ? -SPEED_INCREMENT * 0.5 : SPEED_INCREMENT;
         const baseInit = isDailyRef.current && dailyRef.current?.modifier === "double_speed" ? INITIAL_SPEED * 2 : INITIAL_SPEED;
-        speedRef.current = Math.max(1.5, baseInit + newRound * baseInc);
+        speedRef.current = mode === "practice" ? practiceSpeedRef.current : Math.max(1.5, baseInit + newRound * baseInc);
         setSpeed(speedRef.current);
         if (mode !== "timeattack") {
           setScreen("result");
@@ -349,6 +511,18 @@ export default function SuddenStopGame() {
   // Keyboard support
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.code === "KeyF" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void document.documentElement.requestFullscreen().catch(() => {});
+        return;
+      }
+      if (e.code === "Escape") {
+        if (document.fullscreenElement) return;
+        if (showTutorial) { markTutorialSeen(); setShowTutorial(false); return; }
+        if (screen !== "menu" && screen !== "playing") setScreen("menu");
+        return;
+      }
       if (e.code === "Space" || e.code === "Enter") {
         e.preventDefault();
         if (showTutorial) return;
@@ -364,7 +538,7 @@ export default function SuddenStopGame() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center min-h-screen bg-background transition-transform duration-100 ${shakeScreen ? "translate-x-1" : ""}`}
+      className={`flex flex-col items-center justify-center min-h-[100dvh] bg-background transition-transform duration-100 palette-${settings.colorPalette} ${settings.reducedMotion ? "reduced-motion" : ""} ${shakeScreen ? "translate-x-1" : ""}`}
       onClick={() => {
         if (screen === "playing" && isPlayingRef.current) handleTap();
       }}
@@ -376,6 +550,12 @@ export default function SuddenStopGame() {
       }}
     >
       {showTutorial && <TutorialOverlay onComplete={() => setShowTutorial(false)} />}
+
+      {isSystemPaused && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/85 backdrop-blur-sm">
+          <p className="font-[var(--font-display)] text-sm font-bold tracking-[0.3em] text-primary">PAUSED</p>
+        </div>
+      )}
 
       {flashColor && (
         <div
@@ -408,23 +588,33 @@ export default function SuddenStopGame() {
           onLocal={() => setScreen("leaderboard")}
           onSkins={() => setScreen("skins")}
           onDaily={() => setScreen("daily")}
+          onWeekly={() => setScreen("weekly")}
+          onPractice={() => setScreen("practice")}
+          onGhost={startGhostReplay}
+          hasGhost={!!bestGhost}
           onPowerUpGuide={() => setShowPowerUpGuide(true)}
+          inPlayables={inPlayables}
         />
       )}
       {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
+      {screen === "practice" && <PracticeScreen onStart={startPractice} onBack={() => setScreen("menu")} />}
+      {screen === "weekly" && <WeeklyChallengeScreen onStart={startWeeklyChallenge} onBack={() => setScreen("menu")} />}
       {screen === "settings" && <SettingsScreen settings={settings} onUpdate={updateSettings} onBack={() => setScreen("menu")} />}
-      {screen === "leaderboard" && <LeaderboardScreen onBack={() => setScreen("menu")} />}
-      {screen === "globalLeaderboard" && <GlobalLeaderboardScreen onBack={() => setScreen("menu")} />}
-      {screen === "daily" && <DailyChallengeScreen onPlay={startDailyChallenge} onBack={() => setScreen("menu")} />}
-      {screen === "skins" && <SkinsScreen highScore={highScore} onBack={() => setScreen("menu")} />}
+      {screen === "leaderboard" && !inPlayables && <LeaderboardScreen onBack={() => setScreen("menu")} />}
+      {screen === "globalLeaderboard" && !inPlayables && <GlobalLeaderboardScreen onBack={() => setScreen("menu")} />}
+      {screen === "daily" && !inPlayables && <DailyChallengeScreen onPlay={startDailyChallenge} onBack={() => setScreen("menu")} />}
+      {screen === "skins" && !inPlayables && <SkinsScreen highScore={highScore} onBack={() => setScreen("menu")} />}
       {screen === "gameover" && (
         <GameOverScreen
           score={score}
           highScore={highScore}
           mode={mode}
           isDaily={isDaily}
+          isWeekly={isWeekly}
+          isGhostReplay={isGhostReplay}
+          showLocalScore={!inPlayables}
           dailyMod={dailyChallenge?.modifier ?? null}
-          onRestart={() => setScreen(isDaily ? "daily" : "modeselect")}
+          onRestart={() => setScreen(isDaily ? "daily" : isWeekly ? "weekly" : mode === "practice" ? "practice" : "modeselect")}
           onMenu={() => setScreen("menu")}
         />
       )}
@@ -457,6 +647,9 @@ export default function SuddenStopGame() {
           skin={activeSkin}
           isDaily={isDaily}
           dailyMod={dailyChallenge?.modifier ?? null}
+          isWeekly={isWeekly}
+          ghostPosition={isGhostReplay ? ghostReplayRef.current?.taps[round]?.position ?? null : null}
+          trackScale={trackScale}
           activePowerUp={activePowerUp}
         />
       )}
@@ -465,8 +658,8 @@ export default function SuddenStopGame() {
 }
 
 /* ---- MENU ---- */
-function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily, onPowerUpGuide }: {
-  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void; onPowerUpGuide: () => void;
+function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily, onWeekly, onPractice, onGhost, hasGhost, onPowerUpGuide, inPlayables }: {
+  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void; onWeekly: () => void; onPractice: () => void; onGhost: () => void; hasGhost: boolean; onPowerUpGuide: () => void; inPlayables: boolean;
 }) {
   return (
     <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
@@ -494,26 +687,44 @@ function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, on
         PLAY
       </button>
 
-      <button
+      {!inPlayables && <button
         onClick={(e) => { e.stopPropagation(); onDaily(); }}
         className="neon-border bg-accent/10 hover:bg-accent/20 text-accent font-bold text-sm tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
       >
         ⭐ DAILY CHALLENGE
-      </button>
+      </button>}
+
+      <div className="flex gap-2">
+        <button onClick={(e) => { e.stopPropagation(); onWeekly(); }}
+          className="neon-border bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
+          🗓 WEEKLY
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onPractice(); }}
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
+          🎛 PRACTICE
+        </button>
+      </div>
+
+      {hasGhost && (
+        <button onClick={(e) => { e.stopPropagation(); onGhost(); }}
+          className="neon-border bg-primary/5 hover:bg-primary/15 text-primary font-bold text-[10px] tracking-widest uppercase px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
+          👻 RACE YOUR BEST
+        </button>
+      )}
 
       <div className="flex gap-2 flex-wrap justify-center">
-        <button onClick={(e) => { e.stopPropagation(); onLeaderboard(); }}
+        {!inPlayables && <button onClick={(e) => { e.stopPropagation(); onLeaderboard(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           🌍 GLOBAL
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onLocal(); }}
+        </button>}
+        {!inPlayables && <button onClick={(e) => { e.stopPropagation(); onLocal(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           🏆 LOCAL
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onSkins(); }}
+        </button>}
+        {!inPlayables && <button onClick={(e) => { e.stopPropagation(); onSkins(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           🎨 SKINS
-        </button>
+        </button>}
         <button onClick={(e) => { e.stopPropagation(); onPowerUpGuide(); }}
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           ⚡ POWER-UPS
@@ -530,8 +741,8 @@ function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, on
 }
 
 /* ---- MODE SELECT ---- */
-function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: GameMode) => void; onBack: () => void }) {
-  const modes: { mode: GameMode; label: string; desc: string; icon: string }[] = [
+function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: Exclude<GameMode, "practice">) => void; onBack: () => void }) {
+  const modes: { mode: Exclude<GameMode, "practice">; label: string; desc: string; icon: string }[] = [
     { mode: "classic", label: "CLASSIC", desc: `${ROUNDS_PER_GAME} rounds, increasing speed`, icon: "🎯" },
     { mode: "survival", label: "SURVIVAL", desc: `${SURVIVAL_LIVES} lives, endless rounds`, icon: "❤️" },
     { mode: "timeattack", label: "TIME ATTACK", desc: `${TIMEATTACK_DURATION}s to score max`, icon: "⏱" },
@@ -569,12 +780,47 @@ function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: GameMode) => voi
   );
 }
 
+function PracticeScreen({ onStart, onBack }: { onStart: (speed: number) => void; onBack: () => void }) {
+  const [speed, setSpeed] = useState(2);
+  return (
+    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500 w-full max-w-[340px]">
+      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">PRACTICE</h2>
+      <p className="text-xs text-muted-foreground text-center">Ten rounds, fixed speed, no leaderboard pressure.</p>
+      <div className="w-full neon-border rounded-xl p-5 bg-muted/30">
+        <div className="flex justify-between text-xs tracking-widest uppercase"><span>Speed</span><span className="text-primary">{speed.toFixed(1)}×</span></div>
+        <input aria-label="Practice speed" className="w-full mt-4 accent-[hsl(var(--primary))]" type="range" min="1.5" max="8" step="0.5" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
+      </div>
+      <button onClick={(e) => { e.stopPropagation(); onStart(speed); }} className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-10 py-3 rounded-xl font-[var(--font-display)]">START PRACTICE</button>
+      <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="text-muted-foreground text-xs tracking-widest uppercase">← BACK</button>
+    </div>
+  );
+}
+
+function WeeklyChallengeScreen({ onStart, onBack }: { onStart: (challenge: WeeklyChallenge) => void; onBack: () => void }) {
+  const challenge = getWeeklyChallenge();
+  const modifier = MODIFIER_INFO[challenge.modifier];
+  return (
+    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500 w-full max-w-[380px]">
+      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">WEEKLY</h2>
+      <span className="text-[10px] text-muted-foreground tracking-widest uppercase">{challenge.label}</span>
+      <div className="w-full neon-border-intense rounded-2xl p-6 bg-secondary/5 flex flex-col items-center gap-3">
+        <span className="text-5xl">{modifier.icon}</span>
+        <span className="text-xl font-black text-secondary tracking-widest font-[var(--font-display)]">{modifier.label}</span>
+        <span className="text-xs text-muted-foreground text-center">{modifier.desc}</span>
+        <span className="text-xs text-primary font-bold tracking-widest">{challenge.bonusMultiplier}× BONUS</span>
+      </div>
+      <button onClick={(e) => { e.stopPropagation(); onStart(challenge); }} className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-10 py-3 rounded-xl font-[var(--font-display)]">START WEEKLY</button>
+      <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="text-muted-foreground text-xs tracking-widest uppercase">← BACK</button>
+    </div>
+  );
+}
+
 /* ---- GAME OVER ---- */
-function GameOverScreen({ score, highScore, mode, isDaily, dailyMod, onRestart, onMenu }: {
-  score: number; highScore: number; mode: GameMode; isDaily: boolean; dailyMod: DailyModifier | null; onRestart: () => void; onMenu: () => void;
+function GameOverScreen({ score, highScore, mode, isDaily, isWeekly, isGhostReplay, showLocalScore, dailyMod, onRestart, onMenu }: {
+  score: number; highScore: number; mode: GameMode; isDaily: boolean; isWeekly: boolean; isGhostReplay: boolean; showLocalScore: boolean; dailyMod: DailyModifier | null; onRestart: () => void; onMenu: () => void;
 }) {
   const isNewBest = score >= highScore && score > 0;
-  const modeLabel = isDaily ? `DAILY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : (mode === "classic" ? "CLASSIC" : mode === "survival" ? "SURVIVAL" : "TIME ATTACK");
+  const modeLabel = isDaily ? `DAILY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : isWeekly ? `WEEKLY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : isGhostReplay ? "GHOST REPLAY" : (mode === "classic" ? "CLASSIC" : mode === "survival" ? "SURVIVAL" : mode === "practice" ? "PRACTICE" : "TIME ATTACK");
 
   return (
     <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
@@ -594,7 +840,7 @@ function GameOverScreen({ score, highScore, mode, isDaily, dailyMod, onRestart, 
         <span className="text-xl font-bold text-primary ml-3 font-[var(--font-display)]">{highScore}</span>
       </div>
 
-      <span className="text-[10px] text-muted-foreground tracking-widest">Score submitted to global leaderboard</span>
+      {showLocalScore && <span className="text-[10px] text-muted-foreground tracking-widest">Score submitted to global leaderboard</span>}
 
       <div className="flex gap-3">
         <button
@@ -616,11 +862,11 @@ function GameOverScreen({ score, highScore, mode, isDaily, dailyMod, onRestart, 
 
 /* ---- PLAY SCREEN ---- */
 function PlayScreen({
-  score, round, combo, speed, objectPos, targetPos, targetWidth, hitResult, particleActive, particleKey, mode, lives, timeLeft, skin, isDaily, dailyMod, activePowerUp,
+  score, round, combo, speed, objectPos, targetPos, targetWidth, hitResult, particleActive, particleKey, mode, lives, timeLeft, skin, isDaily, isWeekly, dailyMod, ghostPosition, trackScale, activePowerUp,
 }: {
   score: number; round: number; combo: number; speed: number; objectPos: number; targetPos: number; targetWidth: number;
   hitResult: HitResult; particleActive: boolean; particleKey: number; mode: GameMode; lives: number; timeLeft: number;
-  skin: Skin; isDaily: boolean; dailyMod: DailyModifier | null; activePowerUp: PowerUp | null;
+  skin: Skin; isDaily: boolean; isWeekly: boolean; dailyMod: DailyModifier | null; ghostPosition: number | null; trackScale: number; activePowerUp: PowerUp | null;
 }) {
   const ballShape = skin.shape === "diamond" ? "rotate-45 rounded-sm" : skin.shape === "star" ? "rounded-sm rotate-[22deg]" : "rounded-full";
   const ballStyle: React.CSSProperties = hitResult
@@ -634,9 +880,9 @@ function PlayScreen({
       {/* Active modifier panel (daily + power-up combined) */}
       <ActiveModifierPanel
         activePowerUp={activePowerUp}
-        dailyLabel={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].label : null}
-        dailyIcon={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].icon : null}
-        dailyDesc={isDaily && dailyMod ? MODIFIER_INFO[dailyMod].desc : null}
+        dailyLabel={(isDaily || isWeekly) && dailyMod ? MODIFIER_INFO[dailyMod].label : null}
+        dailyIcon={(isDaily || isWeekly) && dailyMod ? MODIFIER_INFO[dailyMod].icon : null}
+        dailyDesc={(isDaily || isWeekly) && dailyMod ? MODIFIER_INFO[dailyMod].desc : null}
       />
 
       {/* HUD */}
@@ -646,13 +892,13 @@ function PlayScreen({
           <span className="text-2xl font-bold text-primary font-[var(--font-display)] text-glow">{score}</span>
         </div>
         <div className="flex flex-col items-center">
-          {mode === "classic" && !isDaily && (
+          {(mode === "classic" || mode === "practice") && !isDaily && !isWeekly && (
             <>
               <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Round</span>
               <span className="text-lg font-bold text-foreground font-[var(--font-display)]">{round + 1}/{ROUNDS_PER_GAME}</span>
             </>
           )}
-          {(mode === "survival" || isDaily) && (
+          {(mode === "survival" || isDaily || isWeekly) && (
             <>
               <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Lives</span>
               <span className="text-lg font-bold text-destructive font-[var(--font-display)]">
@@ -691,7 +937,8 @@ function PlayScreen({
       </div>
 
       {/* Track */}
-      <div className="relative w-[320px] h-20 bg-muted/50 rounded-2xl overflow-hidden border border-border">
+      <div className="flex w-full justify-center" style={{ height: `${80 * trackScale}px` }}>
+      <div className="relative w-[320px] h-20 bg-muted/50 rounded-2xl overflow-hidden border border-border" style={{ transform: `scale(${trackScale})`, transformOrigin: "top center" }}>
         {Array.from({ length: 16 }).map((_, i) => (
           <div key={i} className="absolute top-0 bottom-0 w-px bg-border/30" style={{ left: `${(i + 1) * (320 / 17)}px` }} />
         ))}
@@ -710,6 +957,12 @@ function PlayScreen({
 
         <StreakFlame combo={combo} objectPos={objectPos} />
 
+        {ghostPosition !== null && !hitResult && (
+          <div className="absolute top-2 bottom-2 w-1 rounded-full bg-secondary/80 shadow-[0_0_12px_hsl(var(--secondary)/0.8)]" style={{ left: ghostPosition }}>
+            <span className="absolute -top-4 -left-3 text-[8px] text-secondary tracking-wider">GHOST</span>
+          </div>
+        )}
+
         {particleActive && hitResult && hitResult !== "miss" && (
           <ParticleExplosion key={particleKey} x={objectPos + OBJECT_SIZE / 2} y={40} type={hitResult as "perfect" | "good"} active={true} />
         )}
@@ -726,6 +979,7 @@ function PlayScreen({
             }} />
           )}
         </div>
+      </div>
       </div>
 
       <div className="h-10 flex items-center justify-center">

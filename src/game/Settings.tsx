@@ -35,6 +35,28 @@ export default function SettingsScreen({ settings, onUpdate, onBack }: SettingsS
           />
         </div>
 
+        <div className="neon-border rounded-xl p-5 bg-muted/30">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-sm text-foreground tracking-wider uppercase font-[var(--font-display)]">Reduced motion</span>
+              <span className="text-xs text-muted-foreground mt-1">Minimizes flashes and movement effects</span>
+            </div>
+            <Switch checked={settings.reducedMotion} onCheckedChange={(checked) => onUpdate({ reducedMotion: checked })} />
+          </div>
+        </div>
+
+        <div className="neon-border rounded-xl p-5 bg-muted/30">
+          <span className="text-sm text-foreground tracking-wider uppercase font-[var(--font-display)]">Color palette</span>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {(["default", "highContrast", "deuteranopia"] as const).map((palette) => (
+              <button key={palette} onClick={() => onUpdate({ colorPalette: palette })}
+                className={`rounded-lg px-2 py-2 text-[9px] uppercase tracking-wider border ${settings.colorPalette === palette ? "border-primary bg-primary/20 text-primary" : "border-border text-muted-foreground"}`}>
+                {palette === "highContrast" ? "Contrast" : palette === "deuteranopia" ? "Blue/Gold" : "Default"}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Haptic */}
         <div className="neon-border rounded-xl p-5 bg-muted/30">
           <div className="flex items-center justify-between">

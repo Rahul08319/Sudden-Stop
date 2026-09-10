@@ -1,73 +1,85 @@
-# Welcome to your Lovable project
+# SUDDEN STOP
 
-## Project info
+### A neon precision-tapping challenge built for YouTube Playables
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Stop at exactly the right moment. Build a streak. Beat the ghost.**
 
-## How can I edit this code?
+Sudden Stop is a fast, single-input reflex game. A moving orb races across the track; tap inside the target zone to score, chain perfect hits, and master escalating modifiers.
 
-There are several ways of editing your application.
+> Built as a responsive HTML5 game with YouTube Playables SDK support. No advertising or monetization features are included.
 
-**Use Lovable**
+## Highlights
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+| Feature | What it does |
+| --- | --- |
+| 🎯 Three core modes | Classic, Survival, and Time Attack give every session a different pace. |
+| 🎛 Practice lab | Choose a fixed speed and refine your timing across ten focused rounds. |
+| 👻 Race Your Best | A seeded ghost marker recreates the target layout from your personal-best run. |
+| ⭐ Daily + weekly challenges | Rotating modifiers, deterministic layouts, bonus scoring, and special rules. |
+| ⚡ Power-ups | Wider zones, slow motion, magnets, and score multipliers keep runs surprising. |
+| ♿ Accessibility | Reduced-motion mode plus high-contrast and blue/gold palettes. |
+| 🔊 Platform aware | YouTube audio, pause/resume, locale, cloud-save, score, and health hooks. |
 
-Changes made via Lovable will be committed automatically to this repo.
+## Controls
 
-**Use your preferred IDE**
+| Input | Action |
+| --- | --- |
+| Tap / click / `Space` / `Enter` | Start, select, or stop the orb |
+| `F` | Toggle fullscreen |
+| `Esc` | Close a menu or tutorial; also exits fullscreen normally |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## YouTube Playables readiness
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+The SDK is loaded in `index.html` before the application bundle. The game integrates:
 
-Follow these steps:
+- `firstFrameReady()` followed by `gameReady()`
+- `IN_PLAYABLES_ENV` checks with local fallbacks
+- YouTube cloud save/load for player settings and best score
+- YouTube audio preference and audio-change events
+- Pause/resume handling with an immediate save
+- Locale detection, score reporting, and health reporting
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Responsive resolution support
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+The UI is designed to remain playable through orientation and viewport changes, including portrait, square, desktop, and ultrawide displays. The game track has a logical 320px coordinate system and scales down only for extremely narrow viewports, so target and ghost positions remain accurate rather than stretched.
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Test Suite checklist
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+The official YouTube Playables Test Suite is run through a Playables Developer Portal release. Before submitting:
+
+1. Build the project with `npm run build`.
+2. Upload the generated `dist` bundle through the Developer Portal.
+3. Open the portal’s Test Suite link and validate SDK order, readiness calls, audio, pause/resume, saves, scores, and responsive resize behavior.
+4. Test the Dev Link on desktop plus Android and iOS.
+
+The Playables environment and its Test Suite are portal-managed, so they cannot be fully simulated by a normal local browser. Official requirements: [SDK reference](https://developers.google.com/youtube/gaming/playables/reference/sdk) · [design requirements](https://developers.google.com/youtube/gaming/playables/certification/requirements_design) · [integration requirements](https://developers.google.com/youtube/gaming/playables/certification/requirements_integration).
+
+## Local development
+
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Verification
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm run build
+npm run test
+npm run lint
+```
 
-**Use GitHub Codespaces**
+## Technology
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+React · TypeScript · Vite · Tailwind CSS · shadcn/ui · Supabase · Capacitor
 
-## What technologies are used for this project?
+## Ideas for the next update
 
-This project is built with:
+- A true moving ghost orb that mirrors the saved timing, not only its stop marker.
+- A compact achievement card collection for precision, streaks, and challenge mastery.
+- Optional text-size controls and a screen-reader-friendly live score announcer.
+- Seasonal visual themes that change the track, particle effects, and challenge presentation.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Made for quick sessions, precise timing, and one-more-run energy.

@@ -1,3 +1,5 @@
+import { isPlayablesEnvironment } from "./youtubePlayables";
+
 export interface Skin {
   id: string;
   name: string;
@@ -70,10 +72,12 @@ export const SKINS: Skin[] = [
 const SKIN_KEY = "suddenstop_selected_skin";
 
 export function getSelectedSkinId(): string {
+  if (isPlayablesEnvironment()) return "default";
   return localStorage.getItem(SKIN_KEY) || "default";
 }
 
 export function setSelectedSkinId(id: string) {
+  if (isPlayablesEnvironment()) return;
   localStorage.setItem(SKIN_KEY, id);
 }
 

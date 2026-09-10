@@ -1,12 +1,15 @@
 import { useState } from "react";
+import { isPlayablesEnvironment } from "./youtubePlayables";
 
 const TUTORIAL_KEY = "suddenstop_tutorial_seen";
 
 export function hasTutorialBeenSeen(): boolean {
+  if (isPlayablesEnvironment()) return true;
   return localStorage.getItem(TUTORIAL_KEY) === "true";
 }
 
 export function markTutorialSeen() {
+  if (isPlayablesEnvironment()) return;
   localStorage.setItem(TUTORIAL_KEY, "true");
 }
 
