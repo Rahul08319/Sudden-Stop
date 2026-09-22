@@ -22,7 +22,9 @@ function loadSettings(): GameSettings {
   try {
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) return { ...defaultSettings, ...JSON.parse(saved) };
-  } catch {}
+  } catch {
+    /* ignore settings read error */
+  }
   return defaultSettings;
 }
 

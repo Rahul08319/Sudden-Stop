@@ -48,7 +48,7 @@ export async function flushQueue(): Promise<void> {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   flushing = true;
   try {
-    let queue = read();
+    const queue = read();
     const remaining: QueuedScore[] = [];
     for (const item of queue) {
       const ok = await trySubmit(item);

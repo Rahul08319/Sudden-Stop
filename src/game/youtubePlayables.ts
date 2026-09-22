@@ -1,6 +1,6 @@
 import type { GhostRun } from "./ghostReplay";
 
-type PersistedGame = {
+export type PersistedGame = {
   highScore?: number;
   settings?: {
     volume?: number;
@@ -9,104 +9,318 @@ type PersistedGame = {
     colorPalette?: "default" | "highContrast" | "deuteranopia";
   };
   ghost?: GhostRun | null;
+  gamesPlayed?: number;
+  revivesUsed?: number;
 };
 
-type PlayablesSdk = {
-  IN_PLAYABLES_ENV?: boolean;
-  game?: {
-    firstFrameReady?: () => void;
-    gameReady?: () => void;
-    loadData?: () => Promise<string>;
-    saveData?: (data: string) => Promise<void>;
-  };
-  system?: {
-    getLanguage?: () => Promise<string>;
-    isAudioEnabled?: () => boolean;
-    onAudioEnabledChange?: (callback: (enabled: boolean) => void) => (() => void);
-    onPause?: (callback: () => void) => (() => void);
-    onResume?: (callback: () => void) => (() => void);
-  };
-  engagement?: { sendScore?: ({ value }: { value: number }) => Promise<void> };
-  health?: { logError?: () => void; logWarning?: () => void };
-};
+export type ContentType = "PLAYABLE" | "VIDEO";
 
-declare global {
-  interface Window {
-    ytgame?: PlayablesSdk;
-    render_game_to_text?: () => string;
+const LOCAL_SAVE_KEY = "suddenstop_playables_save";
+const MAX_SAVE_BYTES = 3 * 1024 * 1024; // 3 MiB YouTube Playables cloud save limit
+let cloudSaveReady = false;
+let lastInterstitialTime = 0;
+const INTERSTITIAL_COOLDOWN_MS = 45000; // 45s between interstitial ads
+
+/**
+ * Access the global ytgame SDK instance safely.
+ */
+export function getPlayablesSdk() {
+  if (typeof window === "undefined") return undefined;
+  return window.ytgame;
+}
+
+/**
+ * Determines whether the game is currently executing inside the YouTube Playables environment.
+ */
+export function isPlayablesEnvironment(): boolean {
+  const sdk = getPlayablesSdk();
+  return Boolean(sdk && sdk.IN_PLAYABLES_ENV);
+}
+
+/**
+ * Returns the loaded YouTube Playables SDK version string.
+ */
+export function getPlayablesSdkVersion(): string | undefined {
+  return getPlayablesSdk()?.SDK_VERSION;
+}
+
+/**
+ * Report a warning to YouTube Health API.
+ * Rate-limited and best-effort by the SDK.
+ */
+export function reportWarning(): void {
+  try {
+    getPlayablesSdk()?.health?.logWarning?.();
+  } catch {
+    // Fail silently on logging error
   }
 }
 
-const LOCAL_SAVE_KEY = "suddenstop_playables_save";
-let cloudSaveReady = false;
-
-function sdk() { return window.ytgame; }
-
-export function isPlayablesEnvironment() { return Boolean(sdk()?.IN_PLAYABLES_ENV); }
-
-export function reportWarning() { sdk()?.health?.logWarning?.(); }
-
-export function reportError() { sdk()?.health?.logError?.(); }
-
-export function notifyFirstFrameReady() {
-  try { sdk()?.game?.firstFrameReady?.(); } catch { reportWarning(); }
+/**
+ * Report an error to YouTube Health API.
+ * Rate-limited and best-effort by the SDK.
+ */
+export function reportError(): void {
+  try {
+    getPlayablesSdk()?.health?.logError?.();
+  } catch {
+    // Fail silently on logging error
+  }
 }
 
-export function notifyGameReady() {
-  try { sdk()?.game?.gameReady?.(); } catch { reportWarning(); }
+/**
+ * Notifies YouTube that the game has begun rendering visual frames.
+ * MUST be called before gameReady().
+ */
+export function notifyFirstFrameReady(): void {
+  try {
+    const sdk = getPlayablesSdk();
+    if (sdk?.game?.firstFrameReady) {
+      sdk.game.firstFrameReady();
+    }
+  } catch {
+    reportWarning();
+  }
 }
 
+/**
+ * Notifies YouTube that the game is interactable and ready for player input.
+ * MUST NOT be called while loading screens are still visible.
+ */
+export function notifyGameReady(): void {
+  try {
+    const sdk = getPlayablesSdk();
+    if (sdk?.game?.gameReady) {
+      sdk.game.gameReady();
+    }
+  } catch {
+    reportWarning();
+  }
+}
+
+/**
+ * Validates whether a string is well-formed UTF-16 and within the 3 MiB limit.
+ */
+function isSaveDataValid(data: string): boolean {
+  if (typeof data !== "string") return false;
+  // Modern browsers support isWellFormed
+  if (typeof (data as unknown as { isWellFormed?: () => boolean }).isWellFormed === "function") {
+    if (!data.isWellFormed()) return false;
+  }
+  // Rough byte calculation for UTF-16 string (2 bytes per character)
+  const byteEstimate = data.length * 2;
+  return byteEstimate <= MAX_SAVE_BYTES;
+}
+
+/**
+ * Loads game data from YouTube cloud save when in Playables environment,
+ * with graceful fallback to localStorage.
+ */
 export async function loadPersistedGame(): Promise<PersistedGame> {
   try {
-    const playable = isPlayablesEnvironment();
-    const raw = playable ? await sdk()?.game?.loadData?.() : localStorage.getItem(LOCAL_SAVE_KEY);
-    if (playable) cloudSaveReady = true;
-    const parsed: unknown = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" ? parsed as PersistedGame : {};
+    const inPlayables = isPlayablesEnvironment();
+    let raw: string | null = null;
+
+    if (inPlayables) {
+      const sdk = getPlayablesSdk();
+      if (sdk?.game?.loadData) {
+        raw = await sdk.game.loadData();
+      }
+      cloudSaveReady = true;
+    } else {
+      raw = localStorage.getItem(LOCAL_SAVE_KEY);
+    }
+
+    if (!raw) return {};
+
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as PersistedGame) : {};
   } catch {
     reportWarning();
     return {};
   }
 }
 
-export async function savePersistedGame(data: PersistedGame) {
-  const serialized = JSON.stringify(data);
+/**
+ * Saves game data to YouTube cloud save when in Playables environment,
+ * with fallback to localStorage.
+ */
+export async function savePersistedGame(data: PersistedGame): Promise<void> {
   try {
-    if (isPlayablesEnvironment()) {
-      if (!cloudSaveReady) return;
-      await sdk()?.game?.saveData?.(serialized);
+    const serialized = JSON.stringify(data);
+    if (!isSaveDataValid(serialized)) {
+      reportWarning();
+      return;
     }
-    else localStorage.setItem(LOCAL_SAVE_KEY, serialized);
-  } catch { reportWarning(); }
+
+    if (isPlayablesEnvironment()) {
+      if (!cloudSaveReady) return; // Prevent overwriting before initial cloud load finishes
+      const sdk = getPlayablesSdk();
+      if (sdk?.game?.saveData) {
+        await sdk.game.saveData(serialized);
+      }
+    } else {
+      localStorage.setItem(LOCAL_SAVE_KEY, serialized);
+    }
+  } catch {
+    reportWarning();
+  }
 }
 
-export async function sendBestScore(score: number) {
+/**
+ * Sends a player's best score to YouTube.
+ * The value must be a non-negative safe integer.
+ */
+export async function sendBestScore(score: number): Promise<void> {
   if (!Number.isSafeInteger(score) || score < 0) return;
-  try { await sdk()?.engagement?.sendScore?.({ value: score }); } catch { reportWarning(); }
-}
-
-export async function applyPlayablesLocale() {
   try {
-    const language = await sdk()?.system?.getLanguage?.();
-    if (language) document.documentElement.lang = language;
-  } catch { reportWarning(); }
+    const sdk = getPlayablesSdk();
+    if (sdk?.engagement?.sendScore) {
+      await sdk.engagement.sendScore({ value: Math.floor(score) });
+    }
+  } catch {
+    reportWarning();
+  }
 }
 
+/**
+ * Requests YouTube to open related content (video or another playable).
+ */
+export async function openYouTubeContent(
+  id: string,
+  contentType: ContentType = "VIDEO"
+): Promise<boolean> {
+  if (!id) return false;
+  try {
+    const sdk = getPlayablesSdk();
+    if (sdk?.engagement?.openYTContent) {
+      await sdk.engagement.openYTContent({ id, contentType });
+      return true;
+    } else {
+      // Fallback in web browser outside Playables
+      const url = contentType === "PLAYABLE"
+        ? `https://www.youtube.com/playables/${id}`
+        : `https://www.youtube.com/watch?v=${id}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+      return true;
+    }
+  } catch {
+    reportWarning();
+    return false;
+  }
+}
+
+/**
+ * Retrieves the user's preferred YouTube language (BCP-47 tag, e.g. "en-US").
+ */
+export async function getPlayablesLanguage(): Promise<string | undefined> {
+  try {
+    const sdk = getPlayablesSdk();
+    if (sdk?.system?.getLanguage) {
+      return await sdk.system.getLanguage();
+    }
+  } catch {
+    reportWarning();
+  }
+  return typeof navigator !== "undefined" ? navigator.language : undefined;
+}
+
+/**
+ * Reads user's language from Playables system and sets document.documentElement.lang.
+ */
+export async function applyPlayablesLocale(): Promise<string | undefined> {
+  try {
+    const language = await getPlayablesLanguage();
+    if (language && typeof document !== "undefined") {
+      document.documentElement.lang = language;
+    }
+    return language;
+  } catch {
+    reportWarning();
+    return undefined;
+  }
+}
+
+/**
+ * Subscribes to YouTube Playables system events:
+ * - isAudioEnabled / onAudioEnabledChange
+ * - onPause
+ * - onResume
+ */
 export function subscribeToPlayablesSystem(callbacks: {
   onAudioEnabledChange: (enabled: boolean) => void;
   onPause: () => void;
   onResume: () => void;
-}) {
-  const system = sdk()?.system;
+}): () => void {
+  const sdk = getPlayablesSdk();
+  const system = sdk?.system;
   if (!system) return () => {};
+
   try {
-    callbacks.onAudioEnabledChange(system.isAudioEnabled?.() ?? true);
+    // Initial audio state sync
+    const initialAudio = system.isAudioEnabled?.() ?? true;
+    callbacks.onAudioEnabledChange(initialAudio);
+
     const removeAudioListener = system.onAudioEnabledChange?.(callbacks.onAudioEnabledChange);
     const removePauseListener = system.onPause?.(callbacks.onPause);
     const removeResumeListener = system.onResume?.(callbacks.onResume);
-    return () => { removeAudioListener?.(); removePauseListener?.(); removeResumeListener?.(); };
+
+    return () => {
+      removeAudioListener?.();
+      removePauseListener?.();
+      removeResumeListener?.();
+    };
   } catch {
     reportWarning();
     return () => {};
+  }
+}
+
+/**
+ * Requests an interstitial ad to be shown at natural breakpoints in gameplay.
+ * Respects cooldown timer to avoid player fatigue.
+ * Returns true if ad completed or was bypassed smoothly.
+ */
+export async function requestPlayablesInterstitialAd(force = false): Promise<boolean> {
+  const now = Date.now();
+  if (!force && now - lastInterstitialTime < INTERSTITIAL_COOLDOWN_MS) {
+    return false; // Skip if in cooldown
+  }
+
+  const sdk = getPlayablesSdk();
+  if (!sdk?.ads?.requestInterstitialAd) {
+    return false;
+  }
+
+  try {
+    lastInterstitialTime = now;
+    await sdk.ads.requestInterstitialAd();
+    return true;
+  } catch {
+    // Interstitial ad failed or unavailable; silently continue
+    return false;
+  }
+}
+
+/**
+ * Requests a rewarded ad to be shown for a specific unique reward ID.
+ * Examples: "sudden-stop-revive", "sudden-stop-bonus"
+ * Returns true if the player fulfilled requirements and earned the reward, false otherwise.
+ */
+export async function requestPlayablesRewardedAd(rewardId: string): Promise<boolean> {
+  if (!rewardId) return false;
+
+  const sdk = getPlayablesSdk();
+  if (!sdk?.ads?.requestRewardedAd) {
+    // In local dev/non-playables environment, simulate rewarded ad for testing if requested
+    return false;
+  }
+
+  try {
+    const isEarned = await sdk.ads.requestRewardedAd(rewardId);
+    return Boolean(isEarned);
+  } catch {
+    reportWarning();
+    return false;
   }
 }

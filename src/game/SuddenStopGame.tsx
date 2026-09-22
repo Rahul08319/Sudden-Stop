@@ -23,7 +23,11 @@ import {
   savePersistedGame,
   sendBestScore,
   subscribeToPlayablesSystem,
+  requestPlayablesInterstitialAd,
+  requestPlayablesRewardedAd,
+  openYouTubeContent,
 } from "./youtubePlayables";
+import { toast } from "sonner";
 
 export type GameMode = "classic" | "survival" | "timeattack" | "practice";
 type ScreenState = "menu" | "modeselect" | "practice" | "weekly" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
@@ -77,6 +81,8 @@ export default function SuddenStopGame() {
   const [dailyResult, setDailyResult] = useState<{ score: number; isNewBest: boolean; previousBest: number; pendingSync: boolean; challenge: DailyChallenge } | null>(null);
   const [bestGhost, setBestGhost] = useState<GhostRun | null>(loadBestGhost);
   const [trackScale, setTrackScale] = useState(1);
+  const [canRevive, setCanRevive] = useState(true);
+  const [isAdLoading, setIsAdLoading] = useState(false);
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -290,6 +296,8 @@ export default function SuddenStopGame() {
     comboRef.current = 0;
     setActivePowerUp(null);
     activePowerUpRef.current = null;
+    setCanRevive(true);
+    setIsAdLoading(false);
 
     let baseSpeed = m === "practice" ? practiceSpeedRef.current : INITIAL_SPEED;
     if (daily?.modifier === "double_speed") baseSpeed *= 2;
@@ -395,6 +403,49 @@ export default function SuddenStopGame() {
   const startGhostReplay = useCallback(() => {
     if (bestGhost) startGame(bestGhost.mode, null, { seed: bestGhost.seed, ghost: bestGhost });
   }, [bestGhost, startGame]);
+
+  const handleRewardedRevive = useCallback(async () => {
+    if (!canRevive || isAdLoading) return;
+    setIsAdLoading(true);
+    try {
+      const earned = await requestPlayablesRewardedAd("sudden-stop-revive");
+      if (earned || !isPlayablesEnvironment()) {
+        setCanRevive(false);
+        setScreen("playing");
+        if (mode === "survival" || isDaily || isWeekly) {
+          setLives(1);
+          livesRef.current = 1;
+        } else if (mode === "timeattack") {
+          setTimeLeft(10);
+          timeLeftRef.current = 10;
+          startCountdown();
+        }
+        isPlayingRef.current = true;
+        playStart();
+        hapticLight();
+        toast.success("Revived! Streak preserved, go for the target!");
+        setTimeout(() => startRound(), 300);
+      } else {
+        toast.info("Reward ad skipped or unavailable.");
+      }
+    } catch {
+      toast.info("Could not load reward ad at this time.");
+    } finally {
+      setIsAdLoading(false);
+    }
+  }, [canRevive, isAdLoading, isDaily, isWeekly, mode, startCountdown, startRound]);
+
+  const handleRestartWithAd = useCallback(async () => {
+    void requestPlayablesInterstitialAd();
+    setCanRevive(true);
+    setScreen(isDaily ? "daily" : isWeekly ? "weekly" : mode === "practice" ? "practice" : "modeselect");
+  }, [isDaily, isWeekly, mode]);
+
+  const handleMenuWithAd = useCallback(async () => {
+    void requestPlayablesInterstitialAd();
+    setCanRevive(true);
+    setScreen("menu");
+  }, []);
 
   const handleTap = useCallback(() => {
     if (!isPlayingRef.current) return;
@@ -614,8 +665,12 @@ export default function SuddenStopGame() {
           isGhostReplay={isGhostReplay}
           showLocalScore={!inPlayables}
           dailyMod={dailyChallenge?.modifier ?? null}
-          onRestart={() => setScreen(isDaily ? "daily" : isWeekly ? "weekly" : mode === "practice" ? "practice" : "modeselect")}
-          onMenu={() => setScreen("menu")}
+          onRestart={handleRestartWithAd}
+          onMenu={handleMenuWithAd}
+          onRevive={handleRewardedRevive}
+          canRevive={canRevive && mode !== "practice"}
+          isAdLoading={isAdLoading}
+          onWatchTips={() => void openYouTubeContent("dQw4w9WgXcQ", "VIDEO")}
         />
       )}
       {screen === "dailyresult" && dailyResult && (
@@ -733,6 +788,10 @@ function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, on
           className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
           ⚙ SETTINGS
         </button>
+        <button onClick={(e) => { e.stopPropagation(); void openYouTubeContent("dQw4w9WgXcQ", "VIDEO"); }}
+          className="neon-border bg-destructive/10 hover:bg-destructive/20 text-destructive font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex items-center gap-1">
+          ▶ YOUTUBE
+        </button>
       </div>
 
       <span className="text-muted-foreground/50 text-xs tracking-wider">TAP or SPACE to play</span>
@@ -816,23 +875,51 @@ function WeeklyChallengeScreen({ onStart, onBack }: { onStart: (challenge: Weekl
 }
 
 /* ---- GAME OVER ---- */
-function GameOverScreen({ score, highScore, mode, isDaily, isWeekly, isGhostReplay, showLocalScore, dailyMod, onRestart, onMenu }: {
-  score: number; highScore: number; mode: GameMode; isDaily: boolean; isWeekly: boolean; isGhostReplay: boolean; showLocalScore: boolean; dailyMod: DailyModifier | null; onRestart: () => void; onMenu: () => void;
+function GameOverScreen({
+  score,
+  highScore,
+  mode,
+  isDaily,
+  isWeekly,
+  isGhostReplay,
+  showLocalScore,
+  dailyMod,
+  onRestart,
+  onMenu,
+  onRevive,
+  canRevive,
+  isAdLoading,
+  onWatchTips,
+}: {
+  score: number;
+  highScore: number;
+  mode: GameMode;
+  isDaily: boolean;
+  isWeekly: boolean;
+  isGhostReplay: boolean;
+  showLocalScore: boolean;
+  dailyMod: DailyModifier | null;
+  onRestart: () => void;
+  onMenu: () => void;
+  onRevive?: () => void;
+  canRevive?: boolean;
+  isAdLoading?: boolean;
+  onWatchTips?: () => void;
 }) {
   const isNewBest = score >= highScore && score > 0;
   const modeLabel = isDaily ? `DAILY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : isWeekly ? `WEEKLY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : isGhostReplay ? "GHOST REPLAY" : (mode === "classic" ? "CLASSIC" : mode === "survival" ? "SURVIVAL" : mode === "practice" ? "PRACTICE" : "TIME ATTACK");
 
   return (
-    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
+    <div className="flex flex-col items-center gap-5 px-6 animate-in fade-in duration-500 w-full max-w-[340px]">
       <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">GAME OVER</h2>
       <span className="text-xs text-primary tracking-widest uppercase font-[var(--font-display)]">{modeLabel}</span>
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-1">
         <span className="text-xs text-muted-foreground tracking-widest uppercase">Score</span>
         <span className={`text-5xl font-black font-[var(--font-display)] ${isNewBest ? "text-accent text-glow-warning" : "text-primary text-glow"}`}>
           {score}
         </span>
-        {isNewBest && <span className="text-accent text-xs tracking-widest uppercase animate-pulse">★ NEW BEST ★</span>}
+        {isNewBest && <span className="text-accent text-xs tracking-widest uppercase animate-pulse mt-1">★ NEW BEST ★</span>}
       </div>
 
       <div className="neon-border rounded-lg px-6 py-2 bg-muted/30">
@@ -840,22 +927,44 @@ function GameOverScreen({ score, highScore, mode, isDaily, isWeekly, isGhostRepl
         <span className="text-xl font-bold text-primary ml-3 font-[var(--font-display)]">{highScore}</span>
       </div>
 
-      {showLocalScore && <span className="text-[10px] text-muted-foreground tracking-widest">Score submitted to global leaderboard</span>}
+      {showLocalScore && <span className="text-[10px] text-muted-foreground tracking-widest text-center">Score synced with YouTube Playables</span>}
 
-      <div className="flex gap-3">
+      {/* Rewarded Ad Revive Opportunity */}
+      {canRevive && onRevive && mode !== "practice" && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRevive(); }}
+          disabled={isAdLoading}
+          className="w-full neon-border-intense bg-gradient-to-r from-accent/20 to-primary/20 hover:from-accent/30 hover:to-primary/30 text-accent font-black text-xs tracking-widest uppercase px-6 py-3.5 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex items-center justify-center gap-2 shadow-[0_0_20px_hsl(var(--accent)/0.3)] animate-pulse"
+        >
+          <span>🎬</span>
+          <span>{isAdLoading ? "LOADING AD..." : mode === "timeattack" ? "WATCH AD (+10s TIME)" : "WATCH AD TO REVIVE (+1 ❤️)"}</span>
+        </button>
+      )}
+
+      <div className="flex gap-3 w-full justify-center">
         <button
           onClick={(e) => { e.stopPropagation(); onRestart(); }}
-          className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+          className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex-1"
         >
           RETRY
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onMenu(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-base tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
+          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-base tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex-1"
         >
           MENU
         </button>
       </div>
+
+      {onWatchTips && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onWatchTips(); }}
+          className="text-[10px] text-muted-foreground hover:text-primary tracking-widest uppercase transition-colors font-[var(--font-display)] flex items-center gap-1.5 mt-1"
+        >
+          <span>▶</span>
+          <span>WATCH PLAYABLES TIPS & VIDEOS</span>
+        </button>
+      )}
     </div>
   );
 }

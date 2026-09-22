@@ -13,7 +13,9 @@ export function getLeaderboard(): LeaderboardEntry[] {
   try {
     const saved = localStorage.getItem(LB_KEY);
     if (saved) return JSON.parse(saved);
-  } catch {}
+  } catch {
+    /* ignore storage read error */
+  }
   return [];
 }
 
