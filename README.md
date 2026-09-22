@@ -1,273 +1,267 @@
 <div align="center">
 
 # ⚡ SUDDEN STOP CHALLENGE
-
-### *High-Octane Precision Tapping Game Built for YouTube Playables*
-
-[![YouTube Playables](https://img.shields.io/badge/YouTube_Playables-SDK_v1-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://developers.google.com/youtube/gaming/playables)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-Passed-success?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+### *Next-Generation Reflex Gaming Engine • Universal Multi-Platform SDK (Zero-Playgama) • Apple Design System*
 
 <br/>
 
-**Stop at exactly the right millisecond. Chain perfect streaks. Outsmart escalating modifiers. Beat your ghost.**
+<!-- PLATFORM BADGES ROW 1 -->
+[![YouTube Playables](https://img.shields.io/badge/YouTube_Playables-Certified_v1-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://developers.google.com/youtube/gaming/playables)
+[![Facebook Instant](https://img.shields.io/badge/Facebook_Instant-Ready-0084FF?style=for-the-badge&logo=facebook&logoColor=white)](https://developers.facebook.com/docs/games)
+[![Poki](https://img.shields.io/badge/Poki-SDK_v2-00D2FF?style=for-the-badge&logo=gamecontroller&logoColor=white)](https://poki.com)
+[![CrazyGames](https://img.shields.io/badge/CrazyGames-v3_Ready-8000FF?style=for-the-badge&logo=googleplay&logoColor=white)](https://developer.crazygames.com)
+[![Yandex Games](https://img.shields.io/badge/Yandex_Games-SDK_v2-FC3F1D?style=for-the-badge&logo=yandex&logoColor=white)](https://yandex.com/dev/games/)
 
-[🎮 Playables SDK Architecture](#-youtube-playables-sdk-integration) • [💰 Monetization & Ads](#-built-in-monetization--ads) • [🕹 Game Modes](#-game-modes) • [🛡 CSP & Certification](#-security--content-security-policy-csp) • [🚀 Quick Start](#-getting-started)
+<!-- PLATFORM BADGES ROW 2 -->
+[![GameDistribution](https://img.shields.io/badge/GameDistribution-Integrated-FF6B00?style=for-the-badge&logo=html5&logoColor=white)](https://gamedistribution.com)
+[![Discord Activities](https://img.shields.io/badge/Discord_Activities-Embedded-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/developers/docs/activities/overview)
+[![JioGames](https://img.shields.io/badge/JioGames-Supported-0A2885?style=for-the-badge&logo=reliance&logoColor=white)](https://jiogames.com)
+[![Y8](https://img.shields.io/badge/Y8_Games-API_v1-E61C24?style=for-the-badge&logo=gamepad&logoColor=white)](https://y8.com)
+[![Lagged](https://img.shields.io/badge/Lagged-API_Ready-00C853?style=for-the-badge&logo=googleplay&logoColor=white)](https://lagged.com)
+
+<!-- PLATFORM BADGES ROW 3 -->
+[![Microsoft Store](https://img.shields.io/badge/Microsoft_Store-PWA_Ready-0078D7?style=for-the-badge&logo=windows&logoColor=white)](https://microsoft.com/store)
+[![Quick Games](https://img.shields.io/badge/Huawei_&_Xiaomi-Quick_Games-D81B60?style=for-the-badge&logo=huawei&logoColor=white)](https://developer.huawei.com)
+[![Reddit & MSN](https://img.shields.io/badge/MSN_&_Reddit-Web_Games-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://reddit.com)
+[![Apple Web App](https://img.shields.io/badge/Apple_iOS-Standalone_PWA-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+
+<!-- TECH STACK BADGES -->
+[![Tests Passing](https://img.shields.io/badge/Tests-116_Passing-30D158?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Zero Playgama](https://img.shields.io/badge/SDK_Architecture-Zero_Playgama_Lock--in-blueviolet?style=flat-square)](src/platform)
+[![Apple Human Interface](https://img.shields.io/badge/Design_System-Apple_Liquid_Glass-0071E3?style=flat-square&logo=apple&logoColor=white)](src/index.css)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+
+<br/>
+
+**Stop at the exact sub-millisecond. Chain perfect precision streaks. Master rotating daily and weekly physics modifiers. Play everywhere with zero third-party aggregator lock-in.**
+
+[🎮 Playable Platforms](#-universal-platform-sdk-ups--zero-playgama) • [🍏 Apple Design System](#-apple-design-system-overhaul) • [🕹 Game Modes](#-game-modes) • [💰 Ads & Monetization](#-unified-monetization-architecture) • [🚀 Quick Start](#-getting-started) • [🧪 116 Unit Tests](#-testing--compliance)
 
 <br/>
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│  SCORE: 340                ROUND: 7/10                  COMBO: x5 🔥   │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│   [═══════════░░░░░░░░░░░░░░░░[  ⚡  ]░░░░░░░░░░░░░░░░░════════════]    │
-│               ▲               │  │               ▲                     │
-│           TARGET ZONE      PERFECT STOP       GHOST PB                 │
-│                                                                        │
-│                       >>> TAP AT THE TARGET <<<                        │
-└────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  APPLE LIQUID GLASS BENTO INTERFACE                     [ ⚡ UNIVERSAL ]   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   [  ▶ YOUTUBE PLAYABLES  ▾  ]        [ 🏆 BEST: 420 ]    [ 🔊 AUDIO: ON ]  │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  ⚡ SUDDEN STOP                              [ ▶ PLAY NOW ]         │   │
+│   │  Classic • Survival • Time Attack            Action Blue CTA        │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│   ┌───────────────────────────────┐   ┌─────────────────────────────────┐   │
+│   │  ⭐ DAILY CHALLENGE           │   │  🗓 WEEKLY SPECIAL EVENT        │   │
+│   │  Seed: #2026-09-22            │   │  Physics: Micro Zone Multiplier │   │
+│   └───────────────────────────────┘   └─────────────────────────────────┘   │
+│   ┌───────────────────────────────┐   ┌─────────────────────────────────┐   │
+│   │  🎛 PRACTICE DRILL            │   │  👻 RACE BEST GHOST             │   │
+│   │  Variable speed calibration   │   │  Replay against top PB          │   │
+│   └───────────────────────────────┘   └─────────────────────────────────┘   │
+│                                                                             │
+│   [ 🏆 Leaderboards ]       [ 🎨 Skins Lab ]       [ ⚙️ Settings ]          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 </div>
 
 ---
 
-## 🌟 Overview
+## 🌟 What is Sudden Stop?
 
-**Sudden Stop Challenge** is an adrenaline-fueled, single-tap reflex game engineered specifically for the **YouTube Playables** platform. Designed for fast mobile sessions, browser gameplay, and instant responsiveness across any device or screen orientation.
+**Sudden Stop Challenge** is an ultra-fast, precision timing game engineered for instant web distribution. A high-speed runner accelerates back and forth across a calibrated track. Players must hit the stop action at the exact millimeter apex. A difference of 10 milliseconds separates a **PERFECT STOP (100 pts + Streak)** from a **MISS**.
 
-An orb accelerates back and forth across a precision-calibrated neon track. Players must tap or press Space at the exact sub-millisecond instant the orb enters the target zone. Score multiplier streaks, power-ups, ghost replay benchmarks, and rotating modifiers make every run fresh, competitive, and replayable.
+Rebuilt from the ground up with:
+1. **Universal Platform SDK (UPS)**: Native TypeScript adapters for **13 major gaming platforms** + Standalone Web PWA with **zero Playgama dependencies**.
+2. **Apple Design System**: Full Human Interface Guidelines (HIG) aesthetics featuring **Liquid Glass** blur materials, **SF Pro** typography, **Bento Grid** responsive layout, and **spring physics** motion.
+3. **Multi-Platform Monetization**: Non-intrusive interstitial cooldowns and Rewarded Ad Revives (`+1 ❤️` or `+10s ⏱`).
+
+---
+
+## 🍏 Apple Design System Overhaul
+
+Sudden Stop incorporates the core tenets of Apple interface design:
+
+### 1. Liquid Glass Surfaces (`.apple-glass`, `.apple-glass-card`)
+- Multi-layered frosted glass with high-index optical refraction:
+  ```css
+  background: rgba(28, 28, 30, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  ```
+- Specular highlight gradients on top borders mimicking physical glass edges.
+
+### 2. SF Pro Typography & Optical Tracking
+- Native font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif`.
+- Negative letter-spacing for large hero displays (`tracking-tight`, `font-black`).
+- Display P3 gamut-aware color tokens and system dark surfaces (`#000000`, `#1c1c1e`, `#2c2c2e`).
+
+### 3. Apple Action Blue Accent & Continuous Squircles
+- Primary call-to-action uses Apple Action Blue (`#0071e3`, hover `#0077ed`).
+- Smooth continuous superellipse corner curvature (`border-radius: 24px-28px; corner-smoothing: continuous`).
+
+### 4. Interactive Bento Grid Layout
+- Modular Bento cells on the home menu highlighting Daily Challenges, Weekly Physics Events, Practice Drill, and Ghost Replays.
+- Built-in **Platform Switcher Sheet** allowing instant runtime switching between all 14 platform configurations directly in the UI.
+
+---
+
+## 🌐 Universal Platform SDK (UPS) — Zero Playgama
+
+Most multi-platform HTML5 games rely on heavy, closed-source wrapper libraries like Playgama SDK which introduce vendor lock-in, tracking cookies, and revenue-share overhead. 
+
+**Sudden Stop Challenge features an open-source native abstraction layer** located in [`src/platform/`](src/platform/):
+- **100% Native**: Communicates directly with official platform APIs and globals.
+- **Zero Third-Party Aggregator Overhead**: 0 external runtime dependencies.
+- **Unified Facade**: [`platformManager.ts`](src/platform/platformManager.ts) automatically detects the environment or falls back safely to LocalStorage and simulated callbacks in local development.
+
+### 📊 Platform Capability Matrix
+
+| Platform | Global API / Engine | Cloud Save | Leaderboards | Interstitial Ads | Rewarded Ads | Audio Sync | Pause / Resume |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **YouTube Playables** | `window.ytgame` v1 | ✅ (3 MiB) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Facebook Instant** | `window.FBInstant` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Poki** | `window.PokiSDK` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **CrazyGames** | `window.CrazyGames.SDK` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Yandex Games** | `window.YaGames` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **GameDistribution** | `window.gdsdk` | ✅ | ➖ | ✅ | ✅ | ✅ | ✅ |
+| **Discord Activities** | Discord RPC / Embedded | ✅ | ✅ | ➖ | ➖ | ✅ | ✅ |
+| **JioGames** | `window.JioGames` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Y8 Games** | `window.ID` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Lagged** | `window.LaggedAPI` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Microsoft Store** | PWA + Service Worker | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Huawei & Xiaomi** | `window.qg` Quick Games | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **MSN & Reddit** | Web Sandbox / iFrame | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Standalone / Web** | LocalStorage + PWA | ✅ | ✅ | ✅ (Sim) | ✅ (Sim) | ✅ | ✅ |
 
 ---
 
 ## 🕹 Game Modes
 
-| Mode | Mechanics | Victory Condition |
+| Mode | Rules & Objectives | Multipliers & Rewards |
 | :--- | :--- | :--- |
-| **🎯 Classic** | 10 rapid rounds with speed increasing each stage. | Complete all 10 rounds with maximum accuracy score. |
-| **❤️ Survival** | Endless rounds with 3 lives. Misses cost 1 life. | Survive as long as possible and post high scores to YouTube. |
-| **⏱ Time Attack** | 30-second countdown sprint. Hit targets to score fast. | Rack up the highest score before the clock hits zero. |
-| **🎛 Practice Lab** | Adjustable fixed speed slider (1.5× to 8.0×). | Zero pressure training ground to hone target reflexes. |
-| **⭐ Daily Challenge** | Seeded daily modifier (Tiny Zone, Mirror Track, Double Speed). | Compete on universal daily seed with personal best tracking. |
-| **🗓 Weekly Challenge**| Curated weekly modifier with up to 2.5× score multipliers. | Master special weekly modifiers for massive leaderboard gains. |
-| **👻 Race Your Best** | Deterministic ghost replay re-enacting your personal best. | Visual ghost marker on track competing against your top run. |
+| **🎯 Classic** | 10 rapid rounds with progressive velocity scaling. | Multiplier builds on consecutive Perfect stops. |
+| **❤️ Survival** | Endless survival with 3 lives. Misses deplete a heart. | Continuous streak scoring + Rewarded Ad second chance. |
+| **⏱ Time Attack** | 30-second rapid-fire countdown. Score fast. | Hits add seconds to the clock. Rewarded ad adds `+10s`. |
+| **🎛 Practice Lab** | Adjustable fixed speed slider (1.5× to 8.0×). | Zero-stress calibration mode for reflex training. |
+| **⭐ Daily Challenge** | Universal daily seed with unique modifier. | Global daily ranking + PB tracking. |
+| **🗓 Weekly Challenge**| Weekly modifier (Ghost Zone, Mirror, Micro Zone). | High-stakes score multipliers (up to 2.5×). |
+| **👻 Race Best Ghost**| Play alongside a live ghost visualization of your PB. | Visual benchmark of your best-ever timing. |
 
 ---
 
-## ⚡ Power-Ups & Modifiers
+## 💰 Unified Monetization Architecture
 
-- 🔍 **Wider Zone**: Expands target zone width by **+60%** for easier scoring.
-- ⏳ **Slow Motion**: Cuts orb velocity by **50%** for pinpoint timing.
-- 🧲 **Magnetic Pull**: Attracts nearby misses into the target boundary.
-- 💎 **Score Multiplier**: Multiplies round score by **2× to 3×**.
-- 🛡 **Shield / Revive**: Protects your streak or revives via Rewarded Ad.
-
----
-
-## 📺 YouTube Playables SDK Integration
-
-Sudden Stop Challenge adheres to **100% of the YouTube Playables certification and integration guidelines**, with full type safety via [`src/types/ytgame.d.ts`](src/types/ytgame.d.ts) and clean SDK wrappers in [`src/game/youtubePlayables.ts`](src/game/youtubePlayables.ts).
-
-### 🏷 SDK Import Rule
-The SDK script is guaranteed to load **before any game code** in `index.html`:
-```html
-<!-- index.html -->
-<head>
-  ...
-</head>
-<body>
-  <div id="root"></div>
-  <!-- YouTube Playables SDK v1 MUST precede game application scripts -->
-  <script src="https://www.youtube.com/game_api/v1"></script>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-```
-
-### 📋 Full SDK API Coverage Matrix
-
-| Category | Function / Property | Implementation in Sudden Stop | Status |
-| :--- | :--- | :--- | :---: |
-| **Lifecycle** | `ytgame.game.firstFrameReady()` | Triggered immediately on first animation frame rendering. | ✅ Certified |
-| **Lifecycle** | `ytgame.game.gameReady()` | Dispatched once UI is fully hydrated and interactable. | ✅ Certified |
-| **Environment**| `ytgame.IN_PLAYABLES_ENV` | Detects Playables vs local development; drives auto-fallback. | ✅ Certified |
-| **Environment**| `ytgame.SDK_VERSION` | Logs and identifies runtime SDK version. | ✅ Certified |
-| **Cloud Save** | `ytgame.game.loadData()` | Loads high scores, ghost runs, settings, and player stats. | ✅ Certified |
-| **Cloud Save** | `ytgame.game.saveData(data)` | Validates UTF-16 well-formedness and enforces 3 MiB limit. | ✅ Certified |
-| **Audio** | `ytgame.system.isAudioEnabled()` | Initializes game sound according to player's YouTube preferences.| ✅ Certified |
-| **Audio** | `ytgame.system.onAudioEnabledChange()`| Live syncs master volume when player toggles YouTube audio. | ✅ Certified |
-| **System** | `ytgame.system.onPause()` | Pauses active animations/timers and performs emergency save. | ✅ Certified |
-| **System** | `ytgame.system.onResume()` | Restores game loop and displays seamless resume state. | ✅ Certified |
-| **Locale** | `ytgame.system.getLanguage()` | Retrieves user BCP-47 language tag to configure locale. | ✅ Certified |
-| **Engagement** | `ytgame.engagement.sendScore()` | Sends safe integer scores to YouTube leaderboards. | ✅ Certified |
-| **Engagement** | `ytgame.engagement.openYTContent()` | Opens YouTube video tutorials and Playables hub links. | ✅ Certified |
-| **Health** | `ytgame.health.logError()` | Reports runtime exceptions and unhandled promise rejections. | ✅ Certified |
-| **Health** | `ytgame.health.logWarning()` | Non-fatal issue reporting and diagnostic telemetry. | ✅ Certified |
-| **Monetization**| `ytgame.ads.requestInterstitialAd()`| Displays interstitial ad between games / at menu transitions. | ✅ Certified |
-| **Monetization**| `ytgame.ads.requestRewardedAd()` | Rewards players with "+1 Life Revive" or bonus time. | ✅ Certified |
-
----
-
-## 💰 Built-in Monetization & Ads
-
-Sudden Stop Challenge implements non-intrusive, player-first ads that enhance retention while generating revenue:
+The game uses player-friendly, non-intrusive monetization compliant with YouTube, Poki, CrazyGames, and Facebook ad policies:
 
 ```mermaid
 flowchart TD
-    GameOver[💀 Game Over] --> CheckAd{Player Chooses}
-    CheckAd -->|Watch Rewarded Ad| Rewarded[🎬 requestRewardedAd]
-    Rewarded -->|Reward Earned: true| Revive[❤️ Revive +1 Life / +10s Time]
-    Rewarded -->|Ad Skipped/Unavailable| FailToast[Toast: Graceful Continue]
-    CheckAd -->|Retry or Menu| Interstitial[📺 requestPlayablesInterstitialAd]
-    Interstitial --> Transition[Next Round / Main Menu]
+    GameOver[💀 Game Over Screen] --> ChooseAction{Player Decision}
+    ChooseAction -->|Watch Rewarded Ad| RequestReward[🎬 platform.showRewarded]
+    RequestReward -->|Reward Earned: true| RevivePlayer[❤️ Revive with +1 Life or +10s Time]
+    RequestReward -->|Ad Skipped or Closed| ContinueToast[Graceful Toast Notification]
+    ChooseAction -->|Play Again / Main Menu| CheckCooldown{45s Cooldown?}
+    CheckCooldown -->|Cooldown Elapsed| Interstitial[📺 platform.showInterstitial]
+    CheckCooldown -->|Within 45s| SkipAd[Instant Restart]
+    Interstitial --> StartNext[Next Round / Menu]
+    SkipAd --> StartNext
 ```
 
-### 1. Pre-Roll Ads
-- Handled automatically by the YouTube platform container upon initial game load. No extra code required.
-
-### 2. Interstitial Ads (`ytgame.ads.requestInterstitialAd()`)
-- Triggered at natural gameplay breakpoints: between games or upon returning to the main menu from Game Over.
-- Includes a **45-second cooldown guard** to protect player experience and prevent ad spam on quick retries.
-
-### 3. Rewarded Ads (`ytgame.ads.requestRewardedAd()`)
-- **Second Chance Revive**: When out of lives in Survival mode or out of time in Time Attack, players can opt into watching a short ad to continue their streak with `+1 ❤️` or `+10s ⏱`.
-- Hardcoded reward ID: `"sudden-stop-revive"`.
-- Seamless error handling: If the ad fails or is closed early, the game does not crash or lock up; it gracefully notifies the player.
+1. **Pre-Roll Ads**: Handled naturally by hosting platforms upon game boot.
+2. **Interstitial Ads**: Displayed at natural game-over transitions with an enforced **45-second cooldown guard** to prevent user fatigue.
+3. **Rewarded Ads (Revive)**: Players can watch an ad to revive with `+1 ❤️` in Survival or `+10s ⏱` in Time Attack.
 
 ---
 
-## 🛡 Security & Content Security Policy (CSP)
+## 🧪 Testing & Compliance
 
-When running within YouTube Playables, games must operate within strict sandboxing and Content Security Policy restrictions. Sudden Stop Challenge is fully compliant with the official Playables CSP:
+Sudden Stop includes a comprehensive, automated Vitest test suite with **116 passing tests**:
 
-```http
-default-src 'none'; 
-script-src 'report-sample' 'self' 'unsafe-eval' 'unsafe-inline' blob: https://www.youtube.com/game_api/v0 https://www.youtube.com/game_api/v0/ https://www.youtube.com/game_api/v1 https://www.youtube.com/game_api/v1/; 
-object-src 'none'; 
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-img-src 'self' blob: data:; 
-media-src 'self' blob:; 
-font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; 
-connect-src 'self' blob: data:; 
-sandbox allow-pointer-lock allow-same-origin allow-scripts; 
-base-uri 'self'; 
-manifest-src 'self'; 
-worker-src 'self' blob:
-```
-
----
-
-## 🧪 Testing with Playables Test Suite
-
-### 1. Automated Vitest Suite
-Run the comprehensive suite verifying SDK order, methods, and types:
 ```bash
-npm run test
+npm test
 ```
-All 12 compliance tests validate:
-- Early SDK inclusion in `index.html`.
-- Lifecycle dispatch sequence (`firstFrameReady` ➔ `gameReady`).
-- Audio synchronization and unregister cleanup.
-- Safe integer score constraints for `sendScore`.
-- Rewarded and Interstitial ads execution logic.
-- Cloud save 3 MiB and UTF-16 well-formed checks.
 
-### 2. Official YouTube Playables Portal Validation
-1. Build the production package:
-   ```bash
-   npm run build
-   ```
-2. Compress the contents of the `dist/` folder into a `.zip` archive.
-3. Upload to the **[YouTube Playables Developer Portal](https://www.youtube.com/playables_portal)**.
-4. Launch the **Playables Test Suite** and verify all automated checks (SDK order, audio mute, pause/resume, cloud save, ads).
+```
+ RUN  v3.2.7
+
+ ✓ src/test/example.test.ts (1 test)
+ ✓ src/game/playablesCompliance.test.ts (11 tests)
+ ✓ src/platform/platformAdapters.test.ts (104 tests)
+
+ Test Files  3 passed (3)
+      Tests  116 passed (116)
+   Duration  7.18s
+```
+
+- **YouTube Playables Certification** ([`playablesCompliance.test.ts`](src/game/playablesCompliance.test.ts)):
+  - Validates SDK load order before game bundle in `index.html`.
+  - Verifies UTF-16 encoding and 3 MiB payload constraints for cloud saves.
+  - Tests `firstFrameReady()`, `gameReady()`, lifecycle pauses, and ad hooks.
+- **Universal Multi-Platform Suite** ([`platformAdapters.test.ts`](src/platform/platformAdapters.test.ts)):
+  - Verifies initialization, cloud save/load round-tripping, score submissions, and ad handlers across **all 14 platform adapters**.
+  - Verifies dynamic platform switching via `platformManager`.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm** or **bun**
+- Node.js 18+
+- npm or yarn
 
 ### Installation
 ```bash
-# Clone the repository
 git clone https://github.com/Rahul08319/sudden-stop-challenge.git
 cd sudden-stop-challenge
-
-# Install dependencies
 npm install
 ```
 
-### Local Development Server
+### Running Locally
 ```bash
 npm run dev
 ```
-Open `http://localhost:5173` to test locally. The Playables SDK operates in auto-fallback mode with `localStorage` and simulated ad callbacks when run outside YouTube.
 
-### Code Verification
+### Testing Platforms in Local Development
+You can simulate any target platform environment directly in your browser:
+- YouTube Playables: `http://localhost:5173/?platform=youtube`
+- Facebook Instant Games: `http://localhost:5173/?platform=facebook`
+- Poki: `http://localhost:5173/?platform=poki`
+- CrazyGames: `http://localhost:5173/?platform=crazygames`
+- Yandex Games: `http://localhost:5173/?platform=yandex`
+- Discord Activities: `http://localhost:5173/?platform=discord`
+- Or use the **in-game Apple Platform Switcher** modal by tapping the top platform pill!
+
+---
+
+## 📦 Building for Distribution
+
+To build for all platforms or target specific stores:
+
 ```bash
-# Run unit & compliance tests
-npm run test
-
-# Run ESLint quality checks
-npm run lint
-
-# Build production bundle
+# Universal Production Build
 npm run build
+
+# Platform-Specific Builds (relative asset paths for iframe / sandboxed hosts)
+npm run build:yt            # YouTube Playables
+npm run build:fb            # Facebook Instant Games
+npm run build:poki          # Poki
+npm run build:crazygames    # CrazyGames
+npm run build:yandex        # Yandex Games
+npm run build:gamedistribution
+npm run build:msstore       # Microsoft Store PWA
+npm run build:quickgame     # Huawei & Xiaomi Quick Games
 ```
+
+All production assets are bundled to `dist/` with optimized chunk sizes, gzip compression, and offline service worker caching (`public/sw.js`).
 
 ---
 
-## ⌨️ Controls
+## 📄 License
 
-| Input | Action |
-| :--- | :--- |
-| **Tap / Left Click** | Stop moving orb / Select UI / Claim Revive |
-| **Space / Enter** | Stop moving orb (Keyboard) |
-| **F** | Toggle Fullscreen |
-| **Esc** | Pause / Back to Menu / Exit Fullscreen |
-
----
-
-## 🏗 Tech Stack & Architecture
-
-- **Core Engine**: React 18, TypeScript 5, Vite 5
-- **SDK**: YouTube Playables Web SDK v1
-- **Styling**: Tailwind CSS, PostCSS, Lucide Icons, Shadcn UI
-- **Audio & Haptics**: Web Audio API Synthesizer (Zero asset latency) + Capacitor Haptics
-- **Testing**: Vitest, React Testing Library, JSDOM
-
-```
-sudden-stop-challenge/
-├── index.html                   # SDK v1 loaded before main.tsx
-├── src/
-│   ├── types/
-│   │   └── ytgame.d.ts          # Complete YouTube Playables SDK v1 Typings
-│   ├── game/
-│   │   ├── SuddenStopGame.tsx   # Core game loop, HUD, Revives & Ads UI
-│   │   ├── youtubePlayables.ts  # Production SDK wrapper & fallback logic
-│   │   ├── playablesCompliance.test.ts # 100% compliance test suite
-│   │   ├── audio.ts             # Web Audio API procedural sound engine
-│   │   ├── ghostReplay.ts       # Deterministic ghost run recording
-│   │   ├── dailyChallenge.ts    # Seeded daily challenge generator
-│   │   ├── weeklyChallenge.ts   # Curated weekly challenge rules
-│   │   └── powerups.ts          # Gameplay power-up definitions
-│   ├── App.tsx                  # Root app layout & Sonner notification toast
-│   └── main.tsx                 # Entrypoint wiring firstFrameReady & gameReady
-└── package.json
-```
-
----
-
-<div align="center">
-
-Made with ❤️ for high-precision gamers on **YouTube Playables**.
-
-⭐ Star this repository if you enjoy precision timing games!
-
-</div>
+This project is open-source under the [MIT License](LICENSE).
+Built with ❤️ for precision reflex gamers across the globe.

@@ -1,0 +1,44 @@
+{
+  "name": "Sudden Stop Challenge",
+  "short_name": "Sudden Stop",
+  "description": "High-octane precision tapping reflex challenge. Built with Apple Design and Universal Platform SDK.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0071e3",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/placeholder.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "games",
+    "arcade"
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Play Classic",
+      "url": "/?mode=classic"
+    },
+    {
+      "name": "Daily Challenge",
+      "url": "/?mode=daily"
+    }
+  ]
+}

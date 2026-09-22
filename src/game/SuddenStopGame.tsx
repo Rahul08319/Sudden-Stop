@@ -28,6 +28,9 @@ import {
   openYouTubeContent,
 } from "./youtubePlayables";
 import { toast } from "sonner";
+import { platform } from "../platform/platformManager";
+import { PlatformSwitcher } from "../components/PlatformSwitcher";
+import type { PlatformId } from "../platform/types";
 
 export type GameMode = "classic" | "survival" | "timeattack" | "practice";
 type ScreenState = "menu" | "modeselect" | "practice" | "weekly" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
@@ -83,6 +86,9 @@ export default function SuddenStopGame() {
   const [trackScale, setTrackScale] = useState(1);
   const [canRevive, setCanRevive] = useState(true);
   const [isAdLoading, setIsAdLoading] = useState(false);
+  const [activePlatform, setActivePlatform] = useState<PlatformId>(() => platform.getActivePlatform().id);
+  const [showPlatformSwitcher, setShowPlatformSwitcher] = useState(false);
+  const currentPlatformInfo = platform.getActivePlatform().info;
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -126,13 +132,22 @@ export default function SuddenStopGame() {
   }, []);
 
   useEffect(() => {
+    return platform.onPlatformChange((p) => {
+      setActivePlatform(p.id);
+      toast.info(`Active Platform: ${p.info.name}`);
+    });
+  }, []);
+
+  useEffect(() => {
     let active = true;
     applyPlayablesLocale();
-    loadPersistedGame().then((saved) => {
+    loadPersistedGame().then(async (saved) => {
       if (!active) return;
-      if (typeof saved.highScore === "number") setHighScore(saved.highScore);
-      if (saved.settings) updateSettings(saved.settings);
-      if (saved.ghost) setBestGhost(saved.ghost);
+      const platformSaved = await platform.loadData<{ highScore?: number; settings?: typeof settings; ghost?: GhostRun }>().catch(() => null);
+      const merged = { ...saved, ...(platformSaved || {}) };
+      if (typeof merged.highScore === "number") setHighScore(merged.highScore);
+      if (merged.settings) updateSettings(merged.settings);
+      if (merged.ghost) setBestGhost(merged.ghost);
     }).finally(() => {
       if (active) setCloudSaveLoaded(true);
     });
@@ -140,7 +155,10 @@ export default function SuddenStopGame() {
   }, [updateSettings]);
 
   useEffect(() => {
-    if (cloudSaveLoaded) void savePersistedGame({ highScore, settings, ghost: bestGhost });
+    if (cloudSaveLoaded) {
+      void savePersistedGame({ highScore, settings, ghost: bestGhost });
+      void platform.saveData({ highScore, settings, ghost: bestGhost });
+    }
   }, [bestGhost, cloudSaveLoaded, highScore, settings]);
 
   const stopTimer = useCallback(() => {
@@ -164,6 +182,8 @@ export default function SuddenStopGame() {
     isPlayingRef.current = false;
     cancelAnimationFrame(animRef.current);
     stopTimer();
+    platform.gameplayStop();
+    void platform.submitScore(finalScore);
     const challengeKind = challengeKindRef.current;
     if (finalScore > highScore) {
       setHighScore(finalScore);
@@ -408,7 +428,13 @@ export default function SuddenStopGame() {
     if (!canRevive || isAdLoading) return;
     setIsAdLoading(true);
     try {
-      const earned = await requestPlayablesRewardedAd("sudden-stop-revive");
+      let earned = false;
+      if (isPlayablesEnvironment()) {
+        earned = await requestPlayablesRewardedAd("sudden-stop-revive");
+      } else {
+        earned = await platform.showRewarded("sudden-stop-revive");
+      }
+
       if (earned || !isPlayablesEnvironment()) {
         setCanRevive(false);
         setScreen("playing");
@@ -436,13 +462,21 @@ export default function SuddenStopGame() {
   }, [canRevive, isAdLoading, isDaily, isWeekly, mode, startCountdown, startRound]);
 
   const handleRestartWithAd = useCallback(async () => {
-    void requestPlayablesInterstitialAd();
+    if (isPlayablesEnvironment()) {
+      void requestPlayablesInterstitialAd();
+    } else {
+      void platform.showInterstitial();
+    }
     setCanRevive(true);
     setScreen(isDaily ? "daily" : isWeekly ? "weekly" : mode === "practice" ? "practice" : "modeselect");
   }, [isDaily, isWeekly, mode]);
 
   const handleMenuWithAd = useCallback(async () => {
-    void requestPlayablesInterstitialAd();
+    if (isPlayablesEnvironment()) {
+      void requestPlayablesInterstitialAd();
+    } else {
+      void platform.showInterstitial();
+    }
     setCanRevive(true);
     setScreen("menu");
   }, []);
@@ -600,6 +634,70 @@ export default function SuddenStopGame() {
         }
       }}
     >
+      {/* Floating Apple Liquid Glass Header Pill */}
+      <header className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 apple-glass-pill px-3 py-1.5 border border-white/15 shadow-xl animate-in fade-in slide-in-from-top-3 duration-300">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowPlatformSwitcher(true);
+          }}
+          className="flex items-center gap-1.5 text-xs font-semibold text-white/90 hover:text-white px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-150 apple-spring-press font-apple"
+          title="Switch Active Gaming Platform SDK"
+        >
+          <span>{currentPlatformInfo.icon}</span>
+          <span className="hidden sm:inline tracking-tight">{currentPlatformInfo.name}</span>
+          <span className="text-[10px] text-white/50">▾</span>
+        </button>
+
+        <div className="h-4 w-px bg-white/15 mx-0.5" />
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setPlayablesAudioEnabled(!playablesAudioEnabled);
+          }}
+          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all duration-150 apple-spring-press text-xs"
+          title="Toggle Audio"
+        >
+          {playablesAudioEnabled ? "🔊" : "🔇"}
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!document.fullscreenElement) {
+              void document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+              void document.exitFullscreen().catch(() => {});
+            }
+          }}
+          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all duration-150 apple-spring-press text-[10px] font-bold"
+          title="Toggle Fullscreen"
+        >
+          ⛶
+        </button>
+
+        {screen !== "settings" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setScreen("settings");
+            }}
+            className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all duration-150 apple-spring-press text-xs"
+            title="Settings"
+          >
+            ⚙
+          </button>
+        )}
+      </header>
+
+      <PlatformSwitcher
+        isOpen={showPlatformSwitcher}
+        onClose={() => setShowPlatformSwitcher(false)}
+        currentPlatform={activePlatform}
+        onSelectPlatform={(id) => platform.setPlatform(id)}
+      />
+
       {showTutorial && <TutorialOverlay onComplete={() => setShowTutorial(false)} />}
 
       {isSystemPaused && (
@@ -645,6 +743,8 @@ export default function SuddenStopGame() {
           hasGhost={!!bestGhost}
           onPowerUpGuide={() => setShowPowerUpGuide(true)}
           inPlayables={inPlayables}
+          platformInfo={currentPlatformInfo}
+          onOpenPlatformSwitcher={() => setShowPlatformSwitcher(true)}
         />
       )}
       {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
@@ -712,89 +812,251 @@ export default function SuddenStopGame() {
   );
 }
 
-/* ---- MENU ---- */
-function MenuScreen({ highScore, onStart, onSettings, onLeaderboard, onLocal, onSkins, onDaily, onWeekly, onPractice, onGhost, hasGhost, onPowerUpGuide, inPlayables }: {
-  highScore: number; onStart: () => void; onSettings: () => void; onLeaderboard: () => void; onLocal: () => void; onSkins: () => void; onDaily: () => void; onWeekly: () => void; onPractice: () => void; onGhost: () => void; hasGhost: boolean; onPowerUpGuide: () => void; inPlayables: boolean;
+/* ---- MENU (APPLE LIQUID GLASS BENTO GRID) ---- */
+function MenuScreen({
+  highScore,
+  onStart,
+  onSettings,
+  onLeaderboard,
+  onLocal,
+  onSkins,
+  onDaily,
+  onWeekly,
+  onPractice,
+  onGhost,
+  hasGhost,
+  onPowerUpGuide,
+  inPlayables,
+  platformInfo,
+  onOpenPlatformSwitcher,
+}: {
+  highScore: number;
+  onStart: () => void;
+  onSettings: () => void;
+  onLeaderboard: () => void;
+  onLocal: () => void;
+  onSkins: () => void;
+  onDaily: () => void;
+  onWeekly: () => void;
+  onPractice: () => void;
+  onGhost: () => void;
+  hasGhost: boolean;
+  onPowerUpGuide: () => void;
+  inPlayables: boolean;
+  platformInfo: import("../platform/types").PlatformInfo;
+  onOpenPlatformSwitcher: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500">
-      <div className="text-center">
-        <h1 className="text-4xl sm:text-5xl font-black tracking-wider text-primary text-glow mb-2">SUDDEN</h1>
-        <h1 className="text-5xl sm:text-6xl font-black tracking-widest text-foreground text-glow mb-4">STOP</h1>
-        <div className="w-32 h-1 bg-primary mx-auto rounded-full shadow-[0_0_15px_hsl(var(--game-neon)/0.6)]" />
+    <div className="flex flex-col items-center gap-5 px-4 w-full max-w-[440px] animate-in fade-in duration-500 font-apple">
+      {/* Platform Badge & Switcher */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenPlatformSwitcher();
+        }}
+        className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full apple-glass border border-white/20 shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-white/40 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-2xl"
+      >
+        <span className="text-base">{platformInfo.icon}</span>
+        <span className="text-xs font-semibold tracking-wide text-white/90">{platformInfo.name}</span>
+        <span className="text-[10px] font-mono uppercase bg-white/15 px-2 py-0.5 rounded-full text-white/70">
+          Switch ▾
+        </span>
+      </button>
+
+      {/* Hero Title & Precision Subtitle */}
+      <div className="text-center space-y-1">
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+          SUDDEN <span className="text-[#30d158]">STOP</span>
+        </h1>
+        <p className="text-xs text-white/60 tracking-normal max-w-[280px] mx-auto font-normal">
+          Microsecond reflex challenge. Hit the apex at the exact millimeter.
+        </p>
       </div>
 
-      <p className="text-muted-foreground text-center text-sm max-w-[260px] leading-relaxed">
-        The object moves fast. Tap at the exact target zone. Precision is everything.
-      </p>
-
+      {/* High Score Glass Pill */}
       {highScore > 0 && (
-        <div className="neon-border rounded-lg px-6 py-3 bg-muted/30">
-          <span className="text-xs text-muted-foreground tracking-widest uppercase">Best</span>
-          <span className="text-2xl font-bold text-primary ml-3 font-[var(--font-display)]">{highScore}</span>
+        <div className="apple-glass-pill px-5 py-2 rounded-full flex items-center gap-3 border border-white/15">
+          <span className="text-[11px] font-bold text-white/50 uppercase tracking-widest">Personal Best</span>
+          <span className="text-xl font-black text-[#ffcc00] tracking-tight">{highScore}</span>
         </div>
       )}
 
-      <button
-        onClick={(e) => { e.stopPropagation(); onStart(); }}
-        className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-lg tracking-widest uppercase px-12 py-4 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
-      >
-        PLAY
-      </button>
-
-      {!inPlayables && <button
-        onClick={(e) => { e.stopPropagation(); onDaily(); }}
-        className="neon-border bg-accent/10 hover:bg-accent/20 text-accent font-bold text-sm tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]"
-      >
-        ⭐ DAILY CHALLENGE
-      </button>}
-
-      <div className="flex gap-2">
-        <button onClick={(e) => { e.stopPropagation(); onWeekly(); }}
-          className="neon-border bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          🗓 WEEKLY
+      {/* Bento Grid Layout */}
+      <div className="w-full grid grid-cols-2 gap-3 pt-1">
+        {/* Main CTA: Apple Action Blue Squircle */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStart();
+          }}
+          className="col-span-2 relative group overflow-hidden apple-squircle bg-[#0071e3] hover:bg-[#0077ED] text-white py-4 px-6 font-bold text-base tracking-wide flex items-center justify-between shadow-[0_8px_30px_rgba(0,113,227,0.35)] transition-all duration-300 active:scale-[0.98] border border-white/25"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-md shadow-inner">
+              <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <div className="text-lg font-black tracking-tight leading-tight">PLAY NOW</div>
+              <div className="text-[11px] text-white/80 font-normal">Classic • Survival • Time Attack</div>
+            </div>
+          </div>
+          <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-sm">
+            Ready
+          </span>
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onPractice(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          🎛 PRACTICE
+
+        {/* Bento Cell 1: Daily Challenge */}
+        {!inPlayables ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDaily();
+            }}
+            className="apple-glass-card p-3.5 text-left rounded-2xl flex flex-col justify-between hover:border-yellow-400/40 hover:bg-yellow-500/10 transition-all duration-300 active:scale-95 group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl">⭐</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
+                Daily
+              </span>
+            </div>
+            <div className="mt-3">
+              <div className="text-sm font-bold text-white group-hover:text-yellow-200 transition-colors">
+                Challenge
+              </div>
+              <div className="text-[11px] text-white/60">New seed every 24h</div>
+            </div>
+          </button>
+        ) : null}
+
+        {/* Bento Cell 2: Weekly Event */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onWeekly();
+          }}
+          className={`apple-glass-card p-3.5 text-left rounded-2xl flex flex-col justify-between hover:border-purple-400/40 hover:bg-purple-500/10 transition-all duration-300 active:scale-95 group ${
+            inPlayables ? "col-span-2" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-2xl">🗓</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-300 border border-purple-400/30">
+              Weekly
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-sm font-bold text-white group-hover:text-purple-200 transition-colors">
+              Special Event
+            </div>
+            <div className="text-[11px] text-white/60">Physics modifiers</div>
+          </div>
         </button>
+
+        {/* Bento Row 3: Practice & Ghost Replay */}
+        <div className="col-span-2 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPractice();
+            }}
+            className="apple-glass-card p-3 text-left rounded-2xl flex items-center gap-3 hover:border-blue-400/40 hover:bg-blue-500/10 transition-all duration-300 active:scale-95"
+          >
+            <span className="text-2xl">🎛</span>
+            <div>
+              <div className="text-xs font-bold text-white">Practice</div>
+              <div className="text-[10px] text-white/60">Zero stakes drill</div>
+            </div>
+          </button>
+
+          {hasGhost ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onGhost();
+              }}
+              className="apple-glass-card p-3 text-left rounded-2xl flex items-center gap-3 hover:border-cyan-400/40 hover:bg-cyan-500/10 transition-all duration-300 active:scale-95"
+            >
+              <span className="text-2xl">👻</span>
+              <div>
+                <div className="text-xs font-bold text-white">Race Ghost</div>
+                <div className="text-[10px] text-white/60">Against your PB</div>
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPowerUpGuide();
+              }}
+              className="apple-glass-card p-3 text-left rounded-2xl flex items-center gap-3 hover:border-emerald-400/40 hover:bg-emerald-500/10 transition-all duration-300 active:scale-95"
+            >
+              <span className="text-2xl">⚡</span>
+              <div>
+                <div className="text-xs font-bold text-white">Power-Ups</div>
+                <div className="text-[10px] text-white/60">Catalog & buff guide</div>
+              </div>
+            </button>
+          )}
+        </div>
+
+        {/* Bento Action Pill Row: Ranks, Skins, Settings */}
+        <div className="col-span-2 flex items-center justify-between gap-2 pt-1">
+          {!inPlayables && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLeaderboard();
+              }}
+              className="flex-1 apple-glass-pill py-2.5 px-3 rounded-xl text-center text-xs font-semibold text-white/80 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-1.5 border border-white/10 hover:border-white/20"
+            >
+              <span>🏆</span>
+              <span>Ranks</span>
+            </button>
+          )}
+          {!inPlayables && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSkins();
+              }}
+              className="flex-1 apple-glass-pill py-2.5 px-3 rounded-xl text-center text-xs font-semibold text-white/80 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-1.5 border border-white/10 hover:border-white/20"
+            >
+              <span>🎨</span>
+              <span>Skins</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSettings();
+            }}
+            className="flex-1 apple-glass-pill py-2.5 px-3 rounded-xl text-center text-xs font-semibold text-white/80 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-1.5 border border-white/10 hover:border-white/20"
+          >
+            <span>⚙️</span>
+            <span>Settings</span>
+          </button>
+        </div>
       </div>
 
-      {hasGhost && (
-        <button onClick={(e) => { e.stopPropagation(); onGhost(); }}
-          className="neon-border bg-primary/5 hover:bg-primary/15 text-primary font-bold text-[10px] tracking-widest uppercase px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          👻 RACE YOUR BEST
-        </button>
-      )}
-
-      <div className="flex gap-2 flex-wrap justify-center">
-        {!inPlayables && <button onClick={(e) => { e.stopPropagation(); onLeaderboard(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          🌍 GLOBAL
-        </button>}
-        {!inPlayables && <button onClick={(e) => { e.stopPropagation(); onLocal(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          🏆 LOCAL
-        </button>}
-        {!inPlayables && <button onClick={(e) => { e.stopPropagation(); onSkins(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          🎨 SKINS
-        </button>}
-        <button onClick={(e) => { e.stopPropagation(); onPowerUpGuide(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          ⚡ POWER-UPS
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onSettings(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)]">
-          ⚙ SETTINGS
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); void openYouTubeContent("dQw4w9WgXcQ", "VIDEO"); }}
-          className="neon-border bg-destructive/10 hover:bg-destructive/20 text-destructive font-bold text-[10px] tracking-widest uppercase px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex items-center gap-1">
-          ▶ YOUTUBE
-        </button>
+      {/* Footer hint */}
+      <div className="text-center pt-2">
+        <span className="text-white/40 text-[11px] tracking-wide font-mono">
+          TAP OR PRESS SPACE • UNIVERSAL ENGINE
+        </span>
       </div>
-
-      <span className="text-muted-foreground/50 text-xs tracking-wider">TAP or SPACE to play</span>
     </div>
   );
 }
