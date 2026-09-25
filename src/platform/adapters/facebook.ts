@@ -8,8 +8,8 @@ export const facebookInfo: PlatformInfo = {
   features: {
     cloudSave: true,
     leaderboards: true,
-    interstitialAds: true,
-    rewardedAds: true,
+    interstitialAds: false,
+    rewardedAds: false,
     audioSync: false,
     pauseResume: true,
     locale: true,

@@ -8,7 +8,7 @@ export const y8Info: PlatformInfo = {
   features: {
     cloudSave: true,
     leaderboards: true,
-    interstitialAds: true,
+    interstitialAds: false,
     rewardedAds: false,
     audioSync: true,
     pauseResume: true,

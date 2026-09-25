@@ -10,16 +10,11 @@ export type PersistedGame = {
   };
   ghost?: GhostRun | null;
   gamesPlayed?: number;
-  revivesUsed?: number;
 };
-
-export type ContentType = "PLAYABLE" | "VIDEO";
 
 const LOCAL_SAVE_KEY = "suddenstop_playables_save";
 const MAX_SAVE_BYTES = 3 * 1024 * 1024; // 3 MiB YouTube Playables cloud save limit
 let cloudSaveReady = false;
-let lastInterstitialTime = 0;
-const INTERSTITIAL_COOLDOWN_MS = 45000; // 45s between interstitial ads
 
 /**
  * Access the global ytgame SDK instance safely.
@@ -184,33 +179,6 @@ export async function sendBestScore(score: number): Promise<void> {
 }
 
 /**
- * Requests YouTube to open related content (video or another playable).
- */
-export async function openYouTubeContent(
-  id: string,
-  contentType: ContentType = "VIDEO"
-): Promise<boolean> {
-  if (!id) return false;
-  try {
-    const sdk = getPlayablesSdk();
-    if (sdk?.engagement?.openYTContent) {
-      await sdk.engagement.openYTContent({ id, contentType });
-      return true;
-    } else {
-      // Fallback in web browser outside Playables
-      const url = contentType === "PLAYABLE"
-        ? `https://www.youtube.com/playables/${id}`
-        : `https://www.youtube.com/watch?v=${id}`;
-      window.open(url, "_blank", "noopener,noreferrer");
-      return true;
-    }
-  } catch {
-    reportWarning();
-    return false;
-  }
-}
-
-/**
  * Retrieves the user's preferred YouTube language (BCP-47 tag, e.g. "en-US").
  */
 export async function getPlayablesLanguage(): Promise<string | undefined> {
@@ -273,54 +241,5 @@ export function subscribeToPlayablesSystem(callbacks: {
   } catch {
     reportWarning();
     return () => {};
-  }
-}
-
-/**
- * Requests an interstitial ad to be shown at natural breakpoints in gameplay.
- * Respects cooldown timer to avoid player fatigue.
- * Returns true if ad completed or was bypassed smoothly.
- */
-export async function requestPlayablesInterstitialAd(force = false): Promise<boolean> {
-  const now = Date.now();
-  if (!force && now - lastInterstitialTime < INTERSTITIAL_COOLDOWN_MS) {
-    return false; // Skip if in cooldown
-  }
-
-  const sdk = getPlayablesSdk();
-  if (!sdk?.ads?.requestInterstitialAd) {
-    return false;
-  }
-
-  try {
-    lastInterstitialTime = now;
-    await sdk.ads.requestInterstitialAd();
-    return true;
-  } catch {
-    // Interstitial ad failed or unavailable; silently continue
-    return false;
-  }
-}
-
-/**
- * Requests a rewarded ad to be shown for a specific unique reward ID.
- * Examples: "sudden-stop-revive", "sudden-stop-bonus"
- * Returns true if the player fulfilled requirements and earned the reward, false otherwise.
- */
-export async function requestPlayablesRewardedAd(rewardId: string): Promise<boolean> {
-  if (!rewardId) return false;
-
-  const sdk = getPlayablesSdk();
-  if (!sdk?.ads?.requestRewardedAd) {
-    // In local dev/non-playables environment, simulate rewarded ad for testing if requested
-    return false;
-  }
-
-  try {
-    const isEarned = await sdk.ads.requestRewardedAd(rewardId);
-    return Boolean(isEarned);
-  } catch {
-    reportWarning();
-    return false;
   }
 }

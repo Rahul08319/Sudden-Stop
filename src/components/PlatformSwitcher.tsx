@@ -79,7 +79,6 @@ export const PlatformSwitcher: React.FC<PlatformSwitcherProps> = ({
                 <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-white/5 text-[9px] text-white/50">
                   {info.features.cloudSave && <span className="px-1.5 py-0.5 rounded bg-white/10">☁️ Cloud</span>}
                   {info.features.leaderboards && <span className="px-1.5 py-0.5 rounded bg-white/10">🏆 Board</span>}
-                  {info.features.rewardedAds && <span className="px-1.5 py-0.5 rounded bg-white/10">🎬 Ads</span>}
                   {info.features.audioSync && <span className="px-1.5 py-0.5 rounded bg-white/10">🔊 Audio</span>}
                 </div>
               </button>

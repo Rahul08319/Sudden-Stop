@@ -96,16 +96,6 @@ export namespace ytgame {
    * Player engagement functions.
    */
   export namespace engagement {
-    export enum ContentType {
-      PLAYABLE = "PLAYABLE",
-      VIDEO = "VIDEO",
-    }
-
-    export interface Content {
-      id: string;
-      contentType?: ContentType | "PLAYABLE" | "VIDEO";
-    }
-
     export interface Score {
       value: number;
     }
@@ -116,10 +106,6 @@ export namespace ytgame {
      */
     export function sendScore(score: Score): Promise<void>;
 
-    /**
-     * Requests YouTube to open content (video or playable) corresponding to the ID.
-     */
-    export function openYTContent(content: Content): Promise<void>;
   }
 
   /**
@@ -137,22 +123,6 @@ export namespace ytgame {
     export function logWarning(): void;
   }
 
-  /**
-   * Monetization and ads functions.
-   */
-  export namespace ads {
-    /**
-     * Requests an interstitial ad to be shown at natural gameplay breaks.
-     * Resolves when ad completes or closes; rejects if ad request fails.
-     */
-    export function requestInterstitialAd(): Promise<void>;
-
-    /**
-     * Requests a rewarded ad for a specific unique reward ID.
-     * Resolves with true if reward conditions were met, false otherwise.
-     */
-    export function requestRewardedAd(rewardId: string): Promise<boolean>;
-  }
 }
 
 declare global {

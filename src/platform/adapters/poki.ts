@@ -8,8 +8,8 @@ export const pokiInfo: PlatformInfo = {
   features: {
     cloudSave: false,
     leaderboards: false,
-    interstitialAds: true,
-    rewardedAds: true,
+    interstitialAds: false,
+    rewardedAds: false,
     audioSync: true,
     pauseResume: true,
     locale: false,

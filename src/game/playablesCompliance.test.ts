@@ -10,12 +10,9 @@ import {
   loadPersistedGame,
   savePersistedGame,
   sendBestScore,
-  openYouTubeContent,
   getPlayablesLanguage,
   applyPlayablesLocale,
   subscribeToPlayablesSystem,
-  requestPlayablesInterstitialAd,
-  requestPlayablesRewardedAd,
   reportError,
   reportWarning,
 } from "./youtubePlayables";
@@ -55,18 +52,15 @@ describe("YouTube Playables integration", () => {
     expect(typeof getPlayablesLanguage).toBe("function");
     expect(typeof applyPlayablesLocale).toBe("function");
     expect(typeof sendBestScore).toBe("function");
-    expect(typeof openYouTubeContent).toBe("function");
     expect(typeof reportError).toBe("function");
     expect(typeof reportWarning).toBe("function");
   });
 
-  it("exports monetization ads APIs (interstitial and rewarded ads)", () => {
-    expect(typeof requestPlayablesInterstitialAd).toBe("function");
-    expect(typeof requestPlayablesRewardedAd).toBe("function");
-
+  it("does not request advertising or external YouTube content", () => {
     const source = readFileSync(resolve(root, "src/game/youtubePlayables.ts"), "utf8");
-    expect(source).toContain("requestInterstitialAd");
-    expect(source).toContain("requestRewardedAd");
+    expect(source).not.toContain("requestInterstitialAd");
+    expect(source).not.toContain("requestRewardedAd");
+    expect(source).not.toContain("openYTContent");
   });
 
   it("correctly identifies non-Playables environment and uses localStorage fallback", async () => {
@@ -169,39 +163,4 @@ describe("YouTube Playables integration", () => {
     expect(sendScoreMock).not.toHaveBeenCalled();
   });
 
-  it("triggers interstitial and rewarded ads safely with proper parameters", async () => {
-    const interstitialMock = vi.fn().mockResolvedValue(undefined);
-    const rewardedMock = vi.fn().mockResolvedValue(true);
-
-    (window as { ytgame?: unknown }).ytgame = {
-      IN_PLAYABLES_ENV: true,
-      ads: {
-        requestInterstitialAd: interstitialMock,
-        requestRewardedAd: rewardedMock,
-      },
-    };
-
-    const interstitialResult = await requestPlayablesInterstitialAd(true);
-    expect(interstitialResult).toBe(true);
-    expect(interstitialMock).toHaveBeenCalledOnce();
-
-    const rewardedResult = await requestPlayablesRewardedAd("revive-reward-1");
-    expect(rewardedResult).toBe(true);
-    expect(rewardedMock).toHaveBeenCalledWith("revive-reward-1");
-  });
-
-  it("handles openYTContent with proper content structures", async () => {
-    const openMock = vi.fn().mockResolvedValue(undefined);
-    (window as { ytgame?: unknown }).ytgame = {
-      IN_PLAYABLES_ENV: true,
-      engagement: { openYTContent: openMock },
-    };
-
-    const success = await openYouTubeContent("tutorial_video_123", "VIDEO");
-    expect(success).toBe(true);
-    expect(openMock).toHaveBeenCalledWith({
-      id: "tutorial_video_123",
-      contentType: "VIDEO",
-    });
-  });
 });

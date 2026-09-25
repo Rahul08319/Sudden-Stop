@@ -28,7 +28,7 @@
 [![Apple Web App](https://img.shields.io/badge/Apple_iOS-Standalone_PWA-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
 
 <!-- TECH STACK BADGES -->
-[![Tests Passing](https://img.shields.io/badge/Tests-116_Passing-30D158?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev)
+[![Tests Passing](https://img.shields.io/badge/Tests-114_Passing-30D158?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![Zero Playgama](https://img.shields.io/badge/SDK_Architecture-Zero_Playgama_Lock--in-blueviolet?style=flat-square)](src/platform)
@@ -39,7 +39,7 @@
 
 **Stop at the exact sub-millisecond. Chain perfect precision streaks. Master rotating daily and weekly physics modifiers. Play everywhere with zero third-party aggregator lock-in.**
 
-[🎮 Playable Platforms](#-universal-platform-sdk-ups--zero-playgama) • [🍏 Apple Design System](#-apple-design-system-overhaul) • [🕹 Game Modes](#-game-modes) • [💰 Ads & Monetization](#-unified-monetization-architecture) • [🚀 Quick Start](#-getting-started) • [🧪 116 Unit Tests](#-testing--compliance)
+[🎮 Playable Platforms](#-universal-platform-sdk-ups--zero-playgama) • [🍏 Apple Design System](#-apple-design-system-overhaul) • [🕹 Game Modes](#-game-modes) • [🚀 Quick Start](#-getting-started) • [🧪 Tests](#-testing--compliance)
 
 <br/>
 
@@ -79,7 +79,7 @@
 Rebuilt from the ground up with:
 1. **Universal Platform SDK (UPS)**: Native TypeScript adapters for **13 major gaming platforms** + Standalone Web PWA with **zero Playgama dependencies**.
 2. **Apple Design System**: Full Human Interface Guidelines (HIG) aesthetics featuring **Liquid Glass** blur materials, **SF Pro** typography, **Bento Grid** responsive layout, and **spring physics** motion.
-3. **Multi-Platform Monetization**: Non-intrusive interstitial cooldowns and Rewarded Ad Revives (`+1 ❤️` or `+10s ⏱`).
+3. **Player-First Gameplay**: No ads, no rewards tied to monetization, and no external navigation during play.
 
 ---
 
@@ -124,22 +124,22 @@ Most multi-platform HTML5 games rely on heavy, closed-source wrapper libraries l
 
 ### 📊 Platform Capability Matrix
 
-| Platform | Global API / Engine | Cloud Save | Leaderboards | Interstitial Ads | Rewarded Ads | Audio Sync | Pause / Resume |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **YouTube Playables** | `window.ytgame` v1 | ✅ (3 MiB) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Facebook Instant** | `window.FBInstant` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Poki** | `window.PokiSDK` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **CrazyGames** | `window.CrazyGames.SDK` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Yandex Games** | `window.YaGames` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GameDistribution** | `window.gdsdk` | ✅ | ➖ | ✅ | ✅ | ✅ | ✅ |
-| **Discord Activities** | Discord RPC / Embedded | ✅ | ✅ | ➖ | ➖ | ✅ | ✅ |
-| **JioGames** | `window.JioGames` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Y8 Games** | `window.ID` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Lagged** | `window.LaggedAPI` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Microsoft Store** | PWA + Service Worker | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Huawei & Xiaomi** | `window.qg` Quick Games | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **MSN & Reddit** | Web Sandbox / iFrame | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Standalone / Web** | LocalStorage + PWA | ✅ | ✅ | ✅ (Sim) | ✅ (Sim) | ✅ | ✅ |
+| Platform | Global API / Engine | Cloud Save | Leaderboards | Audio Sync | Pause / Resume |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **YouTube Playables** | `window.ytgame` v1 | ✅ (3 MiB) | ✅ | ✅ | ✅ |
+| **Facebook Instant** | `window.FBInstant` | ✅ | ✅ | ✅ | ✅ |
+| **Poki** | `window.PokiSDK` | ✅ | ✅ | ✅ | ✅ |
+| **CrazyGames** | `window.CrazyGames.SDK` | ✅ | ✅ | ✅ | ✅ |
+| **Yandex Games** | `window.YaGames` | ✅ | ✅ | ✅ | ✅ |
+| **GameDistribution** | `window.gdsdk` | ✅ | ➖ | ✅ | ✅ |
+| **Discord Activities** | Discord RPC / Embedded | ✅ | ✅ | ✅ | ✅ |
+| **JioGames** | `window.JioGames` | ✅ | ✅ | ✅ | ✅ |
+| **Y8 Games** | `window.ID` | ✅ | ✅ | ✅ | ✅ |
+| **Lagged** | `window.LaggedAPI` | ✅ | ✅ | ✅ | ✅ |
+| **Microsoft Store** | PWA + Service Worker | ✅ | ✅ | ✅ | ✅ |
+| **Huawei & Xiaomi** | `window.qg` Quick Games | ✅ | ✅ | ✅ | ✅ |
+| **MSN & Reddit** | Web Sandbox / iFrame | ✅ | ✅ | ✅ | ✅ |
+| **Standalone / Web** | LocalStorage + PWA | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -148,8 +148,8 @@ Most multi-platform HTML5 games rely on heavy, closed-source wrapper libraries l
 | Mode | Rules & Objectives | Multipliers & Rewards |
 | :--- | :--- | :--- |
 | **🎯 Classic** | 10 rapid rounds with progressive velocity scaling. | Multiplier builds on consecutive Perfect stops. |
-| **❤️ Survival** | Endless survival with 3 lives. Misses deplete a heart. | Continuous streak scoring + Rewarded Ad second chance. |
-| **⏱ Time Attack** | 30-second rapid-fire countdown. Score fast. | Hits add seconds to the clock. Rewarded ad adds `+10s`. |
+| **❤️ Survival** | Endless survival with 3 lives. Misses deplete a heart. | Continuous streak scoring. |
+| **⏱ Time Attack** | 30-second rapid-fire countdown. Score fast. | Hits add seconds to the clock. |
 | **🎛 Practice Lab** | Adjustable fixed speed slider (1.5× to 8.0×). | Zero-stress calibration mode for reflex training. |
 | **⭐ Daily Challenge** | Universal daily seed with unique modifier. | Global daily ranking + PB tracking. |
 | **🗓 Weekly Challenge**| Weekly modifier (Ghost Zone, Mirror, Micro Zone). | High-stakes score multipliers (up to 2.5×). |
@@ -157,32 +157,9 @@ Most multi-platform HTML5 games rely on heavy, closed-source wrapper libraries l
 
 ---
 
-## 💰 Unified Monetization Architecture
-
-The game uses player-friendly, non-intrusive monetization compliant with YouTube, Poki, CrazyGames, and Facebook ad policies:
-
-```mermaid
-flowchart TD
-    GameOver[💀 Game Over Screen] --> ChooseAction{Player Decision}
-    ChooseAction -->|Watch Rewarded Ad| RequestReward[🎬 platform.showRewarded]
-    RequestReward -->|Reward Earned: true| RevivePlayer[❤️ Revive with +1 Life or +10s Time]
-    RequestReward -->|Ad Skipped or Closed| ContinueToast[Graceful Toast Notification]
-    ChooseAction -->|Play Again / Main Menu| CheckCooldown{45s Cooldown?}
-    CheckCooldown -->|Cooldown Elapsed| Interstitial[📺 platform.showInterstitial]
-    CheckCooldown -->|Within 45s| SkipAd[Instant Restart]
-    Interstitial --> StartNext[Next Round / Menu]
-    SkipAd --> StartNext
-```
-
-1. **Pre-Roll Ads**: Handled naturally by hosting platforms upon game boot.
-2. **Interstitial Ads**: Displayed at natural game-over transitions with an enforced **45-second cooldown guard** to prevent user fatigue.
-3. **Rewarded Ads (Revive)**: Players can watch an ad to revive with `+1 ❤️` in Survival or `+10s ⏱` in Time Attack.
-
----
-
 ## 🧪 Testing & Compliance
 
-Sudden Stop includes a comprehensive, automated Vitest test suite with **116 passing tests**:
+Sudden Stop includes a comprehensive, automated Vitest test suite with **114 passing tests**:
 
 ```bash
 npm test
@@ -196,7 +173,7 @@ npm test
  ✓ src/platform/platformAdapters.test.ts (104 tests)
 
  Test Files  3 passed (3)
-      Tests  116 passed (116)
+      Tests  114 passed (114)
    Duration  7.18s
 ```
 

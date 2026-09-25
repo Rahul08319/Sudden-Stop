@@ -6,11 +6,8 @@ import {
   loadPersistedGame,
   savePersistedGame,
   sendBestScore,
-  requestPlayablesInterstitialAd,
-  requestPlayablesRewardedAd,
   subscribeToPlayablesSystem,
   getPlayablesLanguage,
-  openYouTubeContent,
   getPlayablesSdk,
   type PersistedGame,
 } from "../../game/youtubePlayables";
@@ -23,8 +20,8 @@ export const youtubeInfo: PlatformInfo = {
   features: {
     cloudSave: true,
     leaderboards: true,
-    interstitialAds: true,
-    rewardedAds: true,
+    interstitialAds: false,
+    rewardedAds: false,
     audioSync: true,
     pauseResume: true,
     locale: true,
@@ -75,12 +72,12 @@ export class YouTubeAdapter implements PlatformAdapter {
     await sendBestScore(score);
   }
 
-  async showInterstitial(force?: boolean): Promise<boolean> {
-    return await requestPlayablesInterstitialAd(force);
+  async showInterstitial(_force?: boolean): Promise<boolean> {
+    return false;
   }
 
-  async showRewarded(rewardId: string): Promise<boolean> {
-    return await requestPlayablesRewardedAd(rewardId);
+  async showRewarded(_rewardId: string): Promise<boolean> {
+    return false;
   }
 
   isAudioEnabled(): boolean {
@@ -118,6 +115,6 @@ export class YouTubeAdapter implements PlatformAdapter {
   }
 
   openCommunity(): void {
-    void openYouTubeContent("dQw4w9WgXcQ", "VIDEO");
+    // External navigation is intentionally unavailable inside Playables.
   }
 }

@@ -82,7 +82,7 @@ describe("Universal Platform SDK Adapters (Zero-Playgama)", () => {
       await expect(adapter.submitScore(850)).resolves.not.toThrow();
     });
 
-    it("handles ads requests cleanly (resolving to boolean)", async () => {
+    it("keeps dormant optional platform calls safe (resolving to boolean)", async () => {
       await adapter.init();
       const interResult = await adapter.showInterstitial();
       expect(typeof interResult).toBe("boolean");

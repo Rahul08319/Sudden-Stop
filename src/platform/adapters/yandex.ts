@@ -8,8 +8,8 @@ export const yandexInfo: PlatformInfo = {
   features: {
     cloudSave: true,
     leaderboards: true,
-    interstitialAds: true,
-    rewardedAds: true,
+    interstitialAds: false,
+    rewardedAds: false,
     audioSync: true,
     pauseResume: true,
     locale: true,

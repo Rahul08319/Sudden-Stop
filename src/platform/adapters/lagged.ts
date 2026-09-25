@@ -8,8 +8,8 @@ export const laggedInfo: PlatformInfo = {
   features: {
     cloudSave: false,
     leaderboards: true,
-    interstitialAds: true,
-    rewardedAds: true,
+    interstitialAds: false,
+    rewardedAds: false,
     audioSync: true,
     pauseResume: true,
     locale: false,
