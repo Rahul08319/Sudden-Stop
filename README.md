@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/sudden-stop-cover.svg" alt="Sudden Stop — precision reflex game" width="100%" />
+
 # ⚡ SUDDEN STOP CHALLENGE
 ### *Next-Generation Reflex Gaming Engine • Universal Multi-Platform SDK (Zero-Playgama) • Apple Design System*
 

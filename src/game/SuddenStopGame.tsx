@@ -14,6 +14,7 @@ import { type DailyChallenge, type DailyModifier, MODIFIER_INFO, markDailyComple
 import { rollRandomPowerUp, type PowerUp } from "./powerups";
 import PowerUpGuide, { ActiveModifierPanel } from "./PowerUpGuide";
 import DailyResultScreen, { recordDailyPB } from "./DailyResultScreen";
+import WebGLBackdrop from "./WebGLBackdrop";
 import { createRunSeed, loadBestGhost, saveBestGhost, seededRandom, type GhostRun } from "./ghostReplay";
 import { getWeeklyChallenge, type WeeklyChallenge } from "./weeklyChallenge";
 import {
@@ -623,7 +624,7 @@ export default function SuddenStopGame() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center min-h-[100dvh] bg-background transition-transform duration-100 palette-${settings.colorPalette} ${settings.reducedMotion ? "reduced-motion" : ""} ${shakeScreen ? "translate-x-1" : ""}`}
+      className={`relative isolate flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden bg-background transition-transform duration-100 palette-${settings.colorPalette} ${settings.reducedMotion ? "reduced-motion" : ""} ${shakeScreen ? "translate-x-1" : ""}`}
       onClick={() => {
         if (screen === "playing" && isPlayingRef.current) handleTap();
       }}
@@ -698,6 +699,8 @@ export default function SuddenStopGame() {
         onSelectPlatform={(id) => platform.setPlatform(id)}
       />
 
+      <WebGLBackdrop energy={Math.min(1, (combo + (screen === "playing" ? 2 : 0)) / 10)} paused={isSystemPaused} reducedMotion={settings.reducedMotion} />
+
       {showTutorial && <TutorialOverlay onComplete={() => setShowTutorial(false)} />}
 
       {isSystemPaused && (
@@ -728,6 +731,7 @@ export default function SuddenStopGame() {
 
       {showPowerUpGuide && <PowerUpGuide onClose={() => setShowPowerUpGuide(false)} />}
 
+      <main className="relative z-10 flex w-full flex-col items-center">
       {screen === "menu" && (
         <MenuScreen
           highScore={highScore}
@@ -808,6 +812,7 @@ export default function SuddenStopGame() {
           activePowerUp={activePowerUp}
         />
       )}
+      </main>
     </div>
   );
 }

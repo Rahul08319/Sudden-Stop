@@ -76,6 +76,7 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    background: hsl(222 44% 5%);
   }
 
   .palette-highContrast {
@@ -123,13 +124,20 @@
   }
 
   .neon-border {
-    box-shadow: var(--shadow-neon);
-    border: 1px solid hsl(var(--game-neon) / 0.5);
+    box-shadow: var(--shadow-neon), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+    border: 1px solid hsl(var(--game-neon) / 0.38);
+    backdrop-filter: blur(18px) saturate(135%);
   }
 
   .neon-border-intense {
-    box-shadow: var(--shadow-neon-intense);
-    border: 1px solid hsl(var(--game-neon) / 0.8);
+    box-shadow: var(--shadow-neon-intense), inset 0 1px 0 hsl(0 0% 100% / 0.13);
+    border: 1px solid hsl(var(--game-neon) / 0.72);
+    backdrop-filter: blur(18px) saturate(140%);
+  }
+
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 3px;
   }
 
   /* Apple Design System & Liquid Glass Utilities */
