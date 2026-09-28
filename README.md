@@ -153,7 +153,7 @@ Most multi-platform HTML5 games rely on heavy, closed-source wrapper libraries l
 | **🎛 Practice Lab** | Adjustable fixed speed slider (1.5× to 8.0×). | Zero-stress calibration mode for reflex training. |
 | **⭐ Daily Challenge** | Universal daily seed with unique modifier. | Global daily ranking + PB tracking. |
 | **🗓 Weekly Challenge**| Weekly modifier (Ghost Zone, Mirror, Micro Zone). | High-stakes score multipliers (up to 2.5×). |
-| **👻 Race Best Ghost**| Play alongside a live ghost visualization of your PB. | Visual benchmark of your best-ever timing. |
+| **👻 Race Best Ghost**| Race a moving orb replaying your personal-best run's timing and path. | Compare each stop against a persistent PB marker. |
 
 ---
 

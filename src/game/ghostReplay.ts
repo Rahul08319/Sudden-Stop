@@ -5,6 +5,11 @@ export interface GhostTap {
   round: number;
   position: number;
   result: "perfect" | "good" | "miss";
+  /** Optional playback data keeps ghost runs saved before this update compatible. */
+  startPosition?: number;
+  direction?: -1 | 1;
+  distance?: number;
+  elapsedMs?: number;
 }
 
 export interface GhostRun {

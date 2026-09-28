@@ -81,6 +81,7 @@ export default function SuddenStopGame() {
   const [showPowerUpGuide, setShowPowerUpGuide] = useState(false);
   const [dailyResult, setDailyResult] = useState<{ score: number; isNewBest: boolean; previousBest: number; pendingSync: boolean; challenge: DailyChallenge } | null>(null);
   const [bestGhost, setBestGhost] = useState<GhostRun | null>(loadBestGhost);
+  const [ghostPosition, setGhostPosition] = useState<number | null>(null);
   const [trackScale, setTrackScale] = useState(1);
   const [activePlatform, setActivePlatform] = useState<PlatformId>(() => platform.getActivePlatform().id);
   const [showPlatformSwitcher, setShowPlatformSwitcher] = useState(false);
@@ -107,6 +108,11 @@ export default function SuddenStopGame() {
   const randomRef = useRef<() => number>(() => Math.random());
   const ghostTapRef = useRef<GhostRun["taps"]>([]);
   const ghostReplayRef = useRef<GhostRun | null>(null);
+  const roundStartedAtRef = useRef(0);
+  const roundPausedAtRef = useRef(0);
+  const roundStartPositionRef = useRef(0);
+  const roundStartDirectionRef = useRef<1 | -1>(1);
+  const roundDistanceRef = useRef(0);
   const challengeKindRef = useRef<"daily" | "weekly" | null>(null);
   const practiceSpeedRef = useRef(INITIAL_SPEED);
 
@@ -233,6 +239,7 @@ export default function SuddenStopGame() {
       const effectiveSpeed = activePowerUpRef.current?.type === "slow_motion"
         ? speedRef.current * 0.5
         : speedRef.current;
+      const previousPosition = posRef.current;
       posRef.current += effectiveSpeed * dirRef.current;
       if (posRef.current >= TRACK_WIDTH - OBJECT_SIZE) {
         posRef.current = TRACK_WIDTH - OBJECT_SIZE;
@@ -241,8 +248,25 @@ export default function SuddenStopGame() {
         posRef.current = 0;
         dirRef.current = 1;
       }
+      roundDistanceRef.current += Math.abs(posRef.current - previousPosition);
       setObjectPos(posRef.current);
       setDirection(dirRef.current);
+
+      const replayTap = ghostReplayRef.current?.taps.find((tap) => tap.round === roundRef.current);
+      if (replayTap && replayTap.startPosition !== undefined && replayTap.direction !== undefined && replayTap.distance !== undefined && replayTap.elapsedMs !== undefined) {
+        const elapsed = Math.max(0, performance.now() - roundStartedAtRef.current);
+        const progress = Math.min(1, elapsed / Math.max(1, replayTap.elapsedMs));
+        const distance = replayTap.distance * progress;
+        const maxPosition = TRACK_WIDTH - OBJECT_SIZE;
+        const period = maxPosition * 2;
+        const rawPosition = replayTap.startPosition + replayTap.direction * distance;
+        const wrapped = ((rawPosition % period) + period) % period;
+        const replayPosition = elapsed >= replayTap.elapsedMs
+          ? replayTap.position
+          : wrapped <= maxPosition ? wrapped : period - wrapped;
+        setGhostPosition(replayPosition);
+      }
+
       animRef.current = requestAnimationFrame(animate);
     };
     animRef.current = requestAnimationFrame(animate);
@@ -270,8 +294,15 @@ export default function SuddenStopGame() {
     }
 
     // Mirror track modifier: start moving left
-    const startDir = isDailyRef.current && dailyRef.current?.modifier === "mirror_track" ? -1 : 1;
+    const startDir: 1 | -1 = isDailyRef.current && dailyRef.current?.modifier === "mirror_track" ? -1 : 1;
     const startPos = startDir === -1 ? TRACK_WIDTH - OBJECT_SIZE : 0;
+
+    roundStartedAtRef.current = performance.now();
+    roundStartPositionRef.current = startPos;
+    roundStartDirectionRef.current = startDir;
+    roundDistanceRef.current = 0;
+    const replayTap = ghostReplayRef.current?.taps.find((tap) => tap.round === roundRef.current);
+    setGhostPosition(replayTap?.startPosition ?? replayTap?.position ?? null);
 
     posRef.current = startPos;
     dirRef.current = startDir;
@@ -303,6 +334,7 @@ export default function SuddenStopGame() {
     randomRef.current = seededRandom(runSeedRef.current);
     ghostTapRef.current = [];
     ghostReplayRef.current = options.ghost ?? null;
+    setGhostPosition(null);
     practiceSpeedRef.current = options.practiceSpeed ?? INITIAL_SPEED;
     setScore(0);
     scoreRef.current = 0;
@@ -339,6 +371,7 @@ export default function SuddenStopGame() {
   const pauseForSystem = useCallback(() => {
     systemPausedRef.current = true;
     wasPlayingBeforePauseRef.current = isPlayingRef.current;
+    if (isPlayingRef.current) roundPausedAtRef.current = performance.now();
     void savePersistedGame({ highScore, settings, ghost: bestGhost });
     if (isPlayingRef.current) {
       isPlayingRef.current = false;
@@ -355,6 +388,7 @@ export default function SuddenStopGame() {
       pendingRoundAfterResumeRef.current = false;
       startRound();
     } else if (wasPlayingBeforePauseRef.current) {
+      roundStartedAtRef.current += performance.now() - roundPausedAtRef.current;
       isPlayingRef.current = true;
       resumeRoundAnimation();
       if (mode === "timeattack") startCountdown();
@@ -381,6 +415,8 @@ export default function SuddenStopGame() {
       paused: isSystemPaused,
       weeklyChallenge: isWeekly,
       ghostReplay: isGhostReplay,
+      ghostPosition: isGhostReplay ? ghostPosition : null,
+      ghostStopPosition: isGhostReplay ? ghostReplayRef.current?.taps.find((tap) => tap.round === round)?.position ?? null : null,
       practiceSpeed: mode === "practice" ? practiceSpeedRef.current : null,
       movingObject: screen === "playing" ? { x: Math.round(objectPos), direction, speed } : null,
       target: screen === "playing" ? { x: Math.round(targetPos), width: Math.round(getZoneWidth()) } : null,
@@ -388,7 +424,7 @@ export default function SuddenStopGame() {
       activePowerUp: activePowerUp?.type ?? null,
     });
     return () => { delete window.render_game_to_text; };
-  }, [activePowerUp, combo, direction, getZoneWidth, highScore, isGhostReplay, isSystemPaused, isWeekly, lives, mode, objectPos, round, screen, score, speed, targetPos, timeLeft]);
+  }, [activePowerUp, combo, direction, getZoneWidth, ghostPosition, highScore, isGhostReplay, isSystemPaused, isWeekly, lives, mode, objectPos, round, screen, score, speed, targetPos, timeLeft]);
 
   const selectMode = useCallback((m: Exclude<GameMode, "practice">) => {
     startGame(m, null);
@@ -491,7 +527,15 @@ export default function SuddenStopGame() {
     }
 
     setHitResult(result);
-    ghostTapRef.current.push({ round: roundRef.current, position: Math.round(posRef.current), result });
+    ghostTapRef.current.push({
+      round: roundRef.current,
+      position: Math.round(posRef.current),
+      result,
+      startPosition: roundStartPositionRef.current,
+      direction: roundStartDirectionRef.current,
+      distance: Math.round(roundDistanceRef.current * 100) / 100,
+      elapsedMs: Math.max(0, Math.round(performance.now() - roundStartedAtRef.current)),
+    });
     comboRef.current = newCombo;
     setCombo(newCombo);
     const newScore = scoreRef.current + points;
@@ -747,7 +791,8 @@ export default function SuddenStopGame() {
           isDaily={isDaily}
           dailyMod={dailyChallenge?.modifier ?? null}
           isWeekly={isWeekly}
-          ghostPosition={isGhostReplay ? ghostReplayRef.current?.taps[round]?.position ?? null : null}
+          ghostPosition={isGhostReplay ? ghostPosition : null}
+          ghostStopPosition={isGhostReplay ? ghostReplayRef.current?.taps.find((tap) => tap.round === round)?.position ?? null : null}
           trackScale={trackScale}
           activePowerUp={activePowerUp}
         />
@@ -1149,11 +1194,12 @@ function GameOverScreen({
 
 /* ---- PLAY SCREEN ---- */
 function PlayScreen({
-  score, round, combo, speed, objectPos, targetPos, targetWidth, hitResult, particleActive, particleKey, mode, lives, timeLeft, skin, isDaily, isWeekly, dailyMod, ghostPosition, trackScale, activePowerUp,
+  score, round, combo, speed, objectPos, targetPos, targetWidth, hitResult, particleActive, particleKey, mode, lives, timeLeft, skin, isDaily, isWeekly, dailyMod, ghostPosition, ghostStopPosition, trackScale, activePowerUp,
 }: {
   score: number; round: number; combo: number; speed: number; objectPos: number; targetPos: number; targetWidth: number;
   hitResult: HitResult; particleActive: boolean; particleKey: number; mode: GameMode; lives: number; timeLeft: number;
   skin: Skin; isDaily: boolean; isWeekly: boolean; dailyMod: DailyModifier | null; ghostPosition: number | null; trackScale: number; activePowerUp: PowerUp | null;
+  ghostStopPosition: number | null;
 }) {
   const ballShape = skin.shape === "diamond" ? "rotate-45 rounded-sm" : skin.shape === "star" ? "rounded-sm rotate-[22deg]" : "rounded-full";
   const ballStyle: React.CSSProperties = hitResult
@@ -1244,9 +1290,19 @@ function PlayScreen({
 
         <StreakFlame combo={combo} objectPos={objectPos} />
 
+        {ghostStopPosition !== null && !hitResult && (
+          <div className="absolute top-2 bottom-2 w-1 rounded-full bg-secondary/60 shadow-[0_0_12px_hsl(var(--secondary)/0.8)]" style={{ left: ghostStopPosition }}>
+            <span className="absolute -top-4 -left-3 text-[8px] text-secondary tracking-wider">PB</span>
+          </div>
+        )}
+
         {ghostPosition !== null && !hitResult && (
-          <div className="absolute top-2 bottom-2 w-1 rounded-full bg-secondary/80 shadow-[0_0_12px_hsl(var(--secondary)/0.8)]" style={{ left: ghostPosition }}>
-            <span className="absolute -top-4 -left-3 text-[8px] text-secondary tracking-wider">GHOST</span>
+          <div
+            aria-label="Personal best ghost orb"
+            className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border border-secondary/90 bg-secondary/30 shadow-[0_0_18px_hsl(var(--secondary)/0.9)] pointer-events-none"
+            style={{ left: ghostPosition, transform: "translateY(-50%) scale(.72)", transition: "left 16ms linear" }}
+          >
+            <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-secondary tracking-wider">PB</span>
           </div>
         )}
 
