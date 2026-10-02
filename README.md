@@ -83,32 +83,40 @@ Rebuilt from the ground up with:
 
 ---
 
-## 🍏 Apple Design System Overhaul
+## 🍏 Apple Design System Overhaul & Animation Architecture
 
-Sudden Stop incorporates the core tenets of Apple interface design:
+Sudden Stop incorporates the core tenets of Apple interface design (Clarity, Deference, and Depth) across every screen:
 
-### 1. Liquid Glass Surfaces (`.apple-glass`, `.apple-glass-card`)
-- Multi-layered frosted glass with high-index optical refraction:
+### 1. Atmospheric Ambient Depth (`.animate-ambient-float`)
+- Multi-colored, low-intensity background light orbs float softly behind frosted glass surfaces:
+  - Cyan-blue apex glow (`from-[#0071e3]/15 via-[#30d158]/10`)
+  - Deep violet horizon ambient (`from-[#bf5af2]/10 via-[#0a84ff]/5`)
+- Hardware-accelerated 3D transform lerp running at 60/120fps with zero layout thrash.
+
+### 2. Liquid Glass Surfaces & Specular Edges (`.apple-glass`, `.apple-glass-card`)
+- Multi-layered frosted glass with high-index optical refraction and continuous borders:
   ```css
-  background: rgba(28, 28, 30, 0.65);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: rgba(28, 28, 32, 0.72);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
   ```
-- Specular highlight gradients on top borders mimicking physical glass edges.
+- Specular highlight gradients on top borders mimicking real optical edge lighting.
 
-### 2. SF Pro Typography & Optical Tracking
+### 3. Apple Spring Dynamics & Haptic Micro-Interactions (`.animate-spring-pop`, `.apple-spring-press`)
+- **Physics-driven spring curves**: Microsecond taps compress with `active:scale-[0.98]` and pop back with critically damped spring physics (`cubic-bezier(0.16, 1, 0.3, 1)`).
+- **Streak & Combo feedback**: Combo multipliers trigger fluid scale-up spring pops with specular yellow/gold accents.
+- **Strict Reduced Motion support**: Automatically falls back to instant transitions when `prefers-reduced-motion` is active.
+
+### 4. SF Pro Typography & Elevated Dark Hierarchy
 - Native font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif`.
-- Negative letter-spacing for large hero displays (`tracking-tight`, `font-black`).
+- Tight optical letter-spacing (`tracking-tight`, `font-black`).
 - Display P3 gamut-aware color tokens and system dark surfaces (`#000000`, `#1c1c1e`, `#2c2c2e`).
 
-### 3. Apple Action Blue Accent & Continuous Squircles
-- Primary call-to-action uses Apple Action Blue (`#0071e3`, hover `#0077ed`).
-- Smooth continuous superellipse corner curvature (`border-radius: 24px-28px; corner-smoothing: continuous`).
-
-### 4. Interactive Bento Grid Layout
+### 5. Interactive Bento Grid & HUD Capsules
 - Modular Bento cells on the home menu highlighting Daily Challenges, Weekly Physics Events, Practice Drill, and Ghost Replays.
+- In-game HUD capsules (`.apple-hud-capsule`) encapsulating Score, Lives/Time, and active Combo in frosted glass pills.
 - Built-in **Platform Switcher Sheet** allowing instant runtime switching between all 14 platform configurations directly in the UI.
 
 ---

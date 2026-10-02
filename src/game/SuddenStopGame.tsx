@@ -623,6 +623,12 @@ export default function SuddenStopGame() {
         }
       }}
     >
+      {/* Apple Ambient Atmospheric Glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[650px] h-[500px] bg-gradient-to-b from-[#0071e3]/15 via-[#30d158]/10 to-transparent rounded-full blur-[120px] animate-ambient-float" />
+        <div className="absolute bottom-[-20%] left-[15%] w-[550px] h-[450px] bg-gradient-to-t from-[#bf5af2]/10 via-[#0a84ff]/5 to-transparent rounded-full blur-[140px]" />
+      </div>
+
       {/* Floating Apple Liquid Glass Header Pill */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 apple-glass-pill px-3 py-1.5 border border-white/15 shadow-xl animate-in fade-in slide-in-from-top-3 duration-300">
         <button
@@ -1051,39 +1057,99 @@ function MenuScreen({
   );
 }
 
-/* ---- MODE SELECT ---- */
+/* ---- MODE SELECT (APPLE BENTO CARDS) ---- */
 function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: Exclude<GameMode, "practice">) => void; onBack: () => void }) {
-  const modes: { mode: Exclude<GameMode, "practice">; label: string; desc: string; icon: string }[] = [
-    { mode: "classic", label: "CLASSIC", desc: `${ROUNDS_PER_GAME} rounds, increasing speed`, icon: "🎯" },
-    { mode: "survival", label: "SURVIVAL", desc: `${SURVIVAL_LIVES} lives, endless rounds`, icon: "❤️" },
-    { mode: "timeattack", label: "TIME ATTACK", desc: `${TIMEATTACK_DURATION}s to score max`, icon: "⏱" },
+  const modes: { mode: Exclude<GameMode, "practice">; label: string; desc: string; icon: string; badge: string }[] = [
+    { mode: "classic", label: "CLASSIC", desc: `${ROUNDS_PER_GAME} rounds, increasing speed`, icon: "🎯", badge: "10 Rounds" },
+    { mode: "survival", label: "SURVIVAL", desc: `${SURVIVAL_LIVES} lives, endless escalation`, icon: "❤️", badge: "3 Lives" },
+    { mode: "timeattack", label: "TIME ATTACK", desc: `${TIMEATTACK_DURATION}s to score max points`, icon: "⏱", badge: "30s Blitz" },
   ];
 
   return (
-    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500 w-full max-w-[340px]">
-      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">SELECT MODE</h2>
+    <div className="flex flex-col items-center gap-6 px-4 animate-in fade-in duration-500 w-full max-w-[380px] font-apple">
+      <div className="text-center space-y-1">
+        <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]">SELECT MODE</h2>
+        <p className="text-xs text-white/60">Choose your reflex discipline</p>
+      </div>
       <div className="flex flex-col gap-3 w-full">
-        {modes.map(({ mode, label, desc, icon }) => (
+        {modes.map(({ mode, label, desc, icon, badge }) => (
           <button
             key={mode}
+            type="button"
             onClick={(e) => { e.stopPropagation(); onSelect(mode); }}
-            className="neon-border bg-muted/30 hover:bg-primary/10 text-left p-4 rounded-xl transition-all duration-200 active:scale-[0.98] group"
+            className="apple-glass-card-interactive p-4 rounded-2xl text-left flex items-center justify-between group cursor-pointer"
           >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{icon}</span>
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center text-2xl backdrop-blur-md border border-white/15 shadow-inner">
+                {icon}
+              </div>
               <div>
-                <span className="text-sm font-bold text-foreground tracking-widest group-hover:text-primary transition-colors font-[var(--font-display)]">
+                <div className="text-base font-bold text-white tracking-tight group-hover:text-[#30d158] transition-colors">
                   {label}
-                </span>
-                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                </div>
+                <p className="text-xs text-white/60 mt-0.5">{desc}</p>
               </div>
             </div>
+            <span className="text-[11px] font-semibold text-white/70 bg-white/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              {badge}
+            </span>
           </button>
         ))}
       </div>
       <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); onBack(); }}
-        className="text-muted-foreground text-xs tracking-widest uppercase hover:text-foreground transition-colors font-[var(--font-display)] mt-2"
+        className="apple-glass-pill py-2.5 px-6 rounded-full text-xs font-semibold text-white/70 hover:text-white transition-all apple-spring-press mt-2 cursor-pointer"
+      >
+        ← BACK TO MENU
+      </button>
+    </div>
+  );
+}
+
+/* ---- PRACTICE LAB (APPLE DESIGN) ---- */
+function PracticeScreen({ onStart, onBack }: { onStart: (speed: number) => void; onBack: () => void }) {
+  const [speed, setSpeed] = useState(2);
+  return (
+    <div className="flex flex-col items-center gap-6 px-4 animate-in fade-in duration-500 w-full max-w-[380px] font-apple">
+      <div className="text-center space-y-1">
+        <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]">PRACTICE LAB</h2>
+        <p className="text-xs text-white/60">Ten rounds, calibrated fixed velocity, zero leaderboard pressure.</p>
+      </div>
+      <div className="w-full apple-glass-card rounded-3xl p-6 border border-white/15 space-y-5">
+        <div className="flex justify-between items-center text-xs tracking-wide">
+          <span className="text-white/60 font-medium">Velocity Setting</span>
+          <span className="text-base font-black text-[#30d158] font-mono px-3 py-1 rounded-full bg-white/10 border border-white/10">
+            {speed.toFixed(1)}×
+          </span>
+        </div>
+        <input
+          aria-label="Practice speed"
+          className="w-full h-2 rounded-full bg-white/20 accent-[#0071e3] cursor-pointer"
+          type="range"
+          min="1.5"
+          max="8"
+          step="0.5"
+          value={speed}
+          onChange={(e) => setSpeed(Number(e.target.value))}
+        />
+        <div className="flex justify-between text-[10px] text-white/40 font-mono">
+          <span>1.5× Slow</span>
+          <span>4.0× Medium</span>
+          <span>8.0× Hyper</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onStart(speed); }}
+        className="w-full apple-action-btn apple-spring-press py-3.5 text-sm font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer"
+      >
+        <span>START PRACTICE RUN</span>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onBack(); }}
+        className="apple-glass-pill py-2 px-5 rounded-full text-xs font-semibold text-white/60 hover:text-white transition-all apple-spring-press cursor-pointer"
       >
         ← BACK
       </button>
@@ -1091,42 +1157,45 @@ function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: Exclude<GameMode
   );
 }
 
-function PracticeScreen({ onStart, onBack }: { onStart: (speed: number) => void; onBack: () => void }) {
-  const [speed, setSpeed] = useState(2);
-  return (
-    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500 w-full max-w-[340px]">
-      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">PRACTICE</h2>
-      <p className="text-xs text-muted-foreground text-center">Ten rounds, fixed speed, no leaderboard pressure.</p>
-      <div className="w-full neon-border rounded-xl p-5 bg-muted/30">
-        <div className="flex justify-between text-xs tracking-widest uppercase"><span>Speed</span><span className="text-primary">{speed.toFixed(1)}×</span></div>
-        <input aria-label="Practice speed" className="w-full mt-4 accent-[hsl(var(--primary))]" type="range" min="1.5" max="8" step="0.5" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
-      </div>
-      <button onClick={(e) => { e.stopPropagation(); onStart(speed); }} className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-10 py-3 rounded-xl font-[var(--font-display)]">START PRACTICE</button>
-      <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="text-muted-foreground text-xs tracking-widest uppercase">← BACK</button>
-    </div>
-  );
-}
-
+/* ---- WEEKLY EVENT (APPLE DESIGN) ---- */
 function WeeklyChallengeScreen({ onStart, onBack }: { onStart: (challenge: WeeklyChallenge) => void; onBack: () => void }) {
   const challenge = getWeeklyChallenge();
   const modifier = MODIFIER_INFO[challenge.modifier];
   return (
-    <div className="flex flex-col items-center gap-6 px-6 animate-in fade-in duration-500 w-full max-w-[380px]">
-      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">WEEKLY</h2>
-      <span className="text-[10px] text-muted-foreground tracking-widest uppercase">{challenge.label}</span>
-      <div className="w-full neon-border-intense rounded-2xl p-6 bg-secondary/5 flex flex-col items-center gap-3">
-        <span className="text-5xl">{modifier.icon}</span>
-        <span className="text-xl font-black text-secondary tracking-widest font-[var(--font-display)]">{modifier.label}</span>
-        <span className="text-xs text-muted-foreground text-center">{modifier.desc}</span>
-        <span className="text-xs text-primary font-bold tracking-widest">{challenge.bonusMultiplier}× BONUS</span>
+    <div className="flex flex-col items-center gap-6 px-4 animate-in fade-in duration-500 w-full max-w-[380px] font-apple">
+      <div className="text-center space-y-1">
+        <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]">WEEKLY EVENT</h2>
+        <span className="text-[11px] font-semibold text-[#bf5af2] bg-[#bf5af2]/15 px-3 py-1 rounded-full uppercase tracking-wider border border-[#bf5af2]/30">
+          {challenge.label}
+        </span>
       </div>
-      <button onClick={(e) => { e.stopPropagation(); onStart(challenge); }} className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-10 py-3 rounded-xl font-[var(--font-display)]">START WEEKLY</button>
-      <button onClick={(e) => { e.stopPropagation(); onBack(); }} className="text-muted-foreground text-xs tracking-widest uppercase">← BACK</button>
+      <div className="w-full apple-glass-card rounded-3xl p-6 border border-[#bf5af2]/20 flex flex-col items-center gap-3 relative overflow-hidden">
+        <div className="text-6xl p-2 animate-bounce">{modifier.icon}</div>
+        <div className="text-xl font-black text-white tracking-tight">{modifier.label}</div>
+        <p className="text-xs text-white/70 text-center leading-relaxed max-w-[260px]">{modifier.desc}</p>
+        <div className="mt-2 apple-glass-pill px-4 py-1.5 rounded-full text-xs font-bold text-[#30d158] border border-[#30d158]/30">
+          {challenge.bonusMultiplier}× SCORE MULTIPLIER
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onStart(challenge); }}
+        className="w-full apple-action-btn apple-spring-press py-3.5 text-sm font-bold tracking-wide cursor-pointer"
+      >
+        ACCEPT CHALLENGE
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onBack(); }}
+        className="apple-glass-pill py-2 px-5 rounded-full text-xs font-semibold text-white/60 hover:text-white transition-all apple-spring-press cursor-pointer"
+      >
+        ← BACK
+      </button>
     </div>
   );
 }
 
-/* ---- GAME OVER ---- */
+/* ---- GAME OVER (APPLE LIQUID GLASS) ---- */
 function GameOverScreen({
   score,
   highScore,
@@ -1154,40 +1223,82 @@ function GameOverScreen({
   const modeLabel = isDaily ? `DAILY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : isWeekly ? `WEEKLY · ${dailyMod ? MODIFIER_INFO[dailyMod].label : ""}` : isGhostReplay ? "GHOST REPLAY" : (mode === "classic" ? "CLASSIC" : mode === "survival" ? "SURVIVAL" : mode === "practice" ? "PRACTICE" : "TIME ATTACK");
 
   return (
-    <div className="flex flex-col items-center gap-5 px-6 animate-in fade-in duration-500 w-full max-w-[340px]">
-      <h2 className="text-3xl font-black tracking-widest text-foreground font-[var(--font-display)]">GAME OVER</h2>
-      <span className="text-xs text-primary tracking-widest uppercase font-[var(--font-display)]">{modeLabel}</span>
-
-      <div className="flex flex-col items-center gap-1">
-        <span className="text-xs text-muted-foreground tracking-widest uppercase">Score</span>
-        <span className={`text-5xl font-black font-[var(--font-display)] ${isNewBest ? "text-accent text-glow-warning" : "text-primary text-glow"}`}>
-          {score}
+    <div className="flex flex-col items-center gap-5 px-4 animate-in fade-in duration-500 w-full max-w-[360px] font-apple">
+      <div className="text-center space-y-1">
+        <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+          ROUND OVER
+        </h2>
+        <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest px-3 py-1 rounded-full bg-white/10">
+          {modeLabel}
         </span>
-        {isNewBest && <span className="text-accent text-xs tracking-widest uppercase animate-pulse mt-1">★ NEW BEST ★</span>}
       </div>
 
-      <div className="neon-border rounded-lg px-6 py-2 bg-muted/30">
-        <span className="text-xs text-muted-foreground tracking-widest uppercase">Best</span>
-        <span className="text-xl font-bold text-primary ml-3 font-[var(--font-display)]">{highScore}</span>
+      {/* Main Score Glass Card */}
+      <div className="w-full apple-glass-card rounded-3xl p-6 border border-white/15 flex flex-col items-center gap-3 relative overflow-hidden shadow-2xl">
+        <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Final Score</span>
+        <div className={`text-6xl font-black tracking-tight ${isNewBest ? "text-[#ffcc00] animate-spring-pop" : "text-white"}`}>
+          {score}
+        </div>
+        {isNewBest && (
+          <span className="text-[11px] font-bold text-[#ffcc00] bg-[#ffcc00]/20 border border-[#ffcc00]/30 px-3 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+            ★ New Personal Best ★
+          </span>
+        )}
+
+        <div className="w-full h-px bg-white/10 my-1" />
+
+        <div className="flex items-center justify-between w-full px-2">
+          <span className="text-xs text-white/60 font-medium">Personal Best</span>
+          <span className="text-lg font-black text-[#ffcc00] font-mono">{highScore}</span>
+        </div>
       </div>
 
-      {showLocalScore && <span className="text-[10px] text-muted-foreground tracking-widest text-center">Score synced with YouTube Playables</span>}
+      {showLocalScore && (
+        <span className="text-[10px] text-white/40 tracking-wide text-center font-mono">
+          ✓ Score synchronized across Universal Platform SDK
+        </span>
+      )}
 
-      <div className="flex gap-3 w-full justify-center">
+      {/* Rewarded Ad Revive Option */}
+      {canRevive && onRevive && mode !== "practice" && (
         <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRevive(); }}
+          disabled={isAdLoading}
+          className="w-full apple-glass-card p-3.5 rounded-2xl border border-yellow-400/30 hover:border-yellow-400/60 bg-yellow-500/10 text-yellow-300 font-bold text-xs tracking-wider uppercase transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 shadow-[0_0_24px_rgba(255,204,0,0.15)] group cursor-pointer"
+        >
+          <span className="text-lg">🎬</span>
+          <span>{isAdLoading ? "LOADING REWARD AD..." : mode === "timeattack" ? "WATCH AD (+10s EXTRA TIME)" : "WATCH AD TO REVIVE (+1 ❤️)"}</span>
+        </button>
+      )}
+
+      <div className="flex gap-3 w-full justify-center pt-1">
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onRestart(); }}
-          className="neon-border-intense bg-primary/10 hover:bg-primary/20 text-primary font-bold text-base tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex-1"
+          className="apple-action-btn apple-spring-press py-3.5 px-6 font-bold text-sm tracking-wide flex-1 text-center cursor-pointer"
         >
           RETRY
         </button>
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onMenu(); }}
-          className="neon-border bg-muted/30 hover:bg-muted/50 text-foreground font-bold text-base tracking-widest uppercase px-8 py-3 rounded-xl transition-all duration-200 active:scale-95 font-[var(--font-display)] flex-1"
+          className="apple-glass-pill py-3.5 px-6 font-bold text-sm text-white/80 hover:text-white transition-all active:scale-95 flex-1 text-center border border-white/15 cursor-pointer"
         >
           MENU
         </button>
       </div>
 
+      {onWatchTips && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onWatchTips(); }}
+          className="text-[11px] text-white/40 hover:text-white/80 tracking-wide uppercase transition-colors flex items-center gap-1.5 mt-1 font-mono cursor-pointer"
+        >
+          <span>▶</span>
+          <span>PRO TIPS & COMMUNITY REPLAYS</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -1209,7 +1320,7 @@ function PlayScreen({
     : { background: skin.color, boxShadow: `0 0 15px ${skin.glow}` };
 
   return (
-    <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[380px]">
+    <div className="flex flex-col items-center gap-6 px-4 w-full max-w-[420px] font-apple">
       {/* Active modifier panel (daily + power-up combined) */}
       <ActiveModifierPanel
         activePowerUp={activePowerUp}
@@ -1218,118 +1329,152 @@ function PlayScreen({
         dailyDesc={(isDaily || isWeekly) && dailyMod ? MODIFIER_INFO[dailyMod].desc : null}
       />
 
-      {/* HUD */}
-      <div className="flex items-center justify-between w-full">
-        <div className="flex flex-col items-start">
-          <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Score</span>
-          <span className="text-2xl font-bold text-primary font-[var(--font-display)] text-glow">{score}</span>
+      {/* Apple HUD Capsules */}
+      <div className="flex items-center justify-between w-full gap-2">
+        {/* Score Capsule */}
+        <div className="apple-hud-capsule px-3.5 py-1.5 flex items-center gap-2 border border-white/15">
+          <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Score</span>
+          <span className="text-lg font-black text-white font-mono">{score}</span>
         </div>
-        <div className="flex flex-col items-center">
+
+        {/* Center Mode Status Capsule */}
+        <div className="apple-hud-capsule px-3.5 py-1.5 flex items-center gap-2 border border-white/15">
           {(mode === "classic" || mode === "practice") && !isDaily && !isWeekly && (
             <>
-              <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Round</span>
-              <span className="text-lg font-bold text-foreground font-[var(--font-display)]">{round + 1}/{ROUNDS_PER_GAME}</span>
+              <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Round</span>
+              <span className="text-sm font-black text-white font-mono">{round + 1}/{ROUNDS_PER_GAME}</span>
             </>
           )}
           {(mode === "survival" || isDaily || isWeekly) && (
             <>
-              <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Lives</span>
-              <span className="text-lg font-bold text-destructive font-[var(--font-display)]">
+              <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Lives</span>
+              <span className="text-sm font-black text-[#ff453a] tracking-tight">
                 {"❤️".repeat(Math.max(0, lives))}
               </span>
             </>
           )}
           {mode === "timeattack" && !isDaily && (
             <>
-              <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Time</span>
-              <span className={`text-lg font-bold font-[var(--font-display)] ${timeLeft <= 5 ? "text-destructive animate-pulse text-glow-danger" : "text-foreground"}`}>
+              <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Time</span>
+              <span className={`text-sm font-black font-mono ${timeLeft <= 5 ? "text-[#ff453a] animate-pulse" : "text-white"}`}>
                 {timeLeft}s
               </span>
             </>
           )}
         </div>
-        <div className="flex flex-col items-end">
-          {combo > 1 && (
-            <>
-              <span className="text-[10px] text-accent tracking-widest uppercase">Combo</span>
-              <span className="text-2xl font-bold text-accent font-[var(--font-display)] text-glow-warning">x{combo}</span>
-            </>
+
+        {/* Combo Capsule */}
+        <div className="min-w-[70px] flex justify-end">
+          {combo > 1 ? (
+            <div className="apple-hud-capsule px-3 py-1.5 flex items-center gap-1 border border-yellow-400/40 bg-yellow-500/15 text-yellow-300 animate-spring-pop shadow-[0_0_12px_rgba(255,204,0,0.2)]">
+              <span className="text-[10px] uppercase font-bold tracking-wider">Streak</span>
+              <span className="text-sm font-black font-mono">x{combo}</span>
+            </div>
+          ) : (
+            <div className="w-1" />
           )}
         </div>
       </div>
 
-      {/* Speed indicator */}
-      <div className="flex items-center gap-2 w-full">
-        <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Speed</span>
-        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+      {/* Apple Speed Meter */}
+      <div className="flex items-center gap-3 w-full px-1">
+        <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider font-mono">Velocity</span>
+        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
           <div
-            className="h-full bg-gradient-to-r from-primary to-destructive rounded-full transition-all duration-300"
+            className="h-full bg-gradient-to-r from-[#30d158] via-[#ff9f0a] to-[#ff453a] rounded-full transition-all duration-300"
             style={{ width: `${Math.min(100, ((speed - INITIAL_SPEED) / (INITIAL_SPEED * 3)) * 100 + 15)}%` }}
           />
         </div>
+        <span className="text-[10px] text-white/40 font-mono">{speed.toFixed(1)}x</span>
       </div>
 
-      {/* Track */}
-      <div className="flex w-full justify-center" style={{ height: `${80 * trackScale}px` }}>
-      <div className="relative w-[320px] h-20 bg-muted/50 rounded-2xl overflow-hidden border border-border" style={{ transform: `scale(${trackScale})`, transformOrigin: "top center" }}>
-        {Array.from({ length: 16 }).map((_, i) => (
-          <div key={i} className="absolute top-0 bottom-0 w-px bg-border/30" style={{ left: `${(i + 1) * (320 / 17)}px` }} />
-        ))}
-
+      {/* Runner Track (Apple Liquid Glass Specular Track) */}
+      <div className="flex w-full justify-center" style={{ height: `${84 * trackScale}px` }}>
         <div
-          className={`absolute top-0 bottom-0 rounded-lg transition-colors duration-200 ${
-            hitResult === "perfect" ? "bg-primary/40 shadow-[0_0_30px_hsl(var(--game-neon)/0.5)]"
-              : hitResult === "good" ? "bg-accent/30"
-              : hitResult === "miss" ? "bg-destructive/20"
-              : "bg-primary/15 border border-primary/30"
-          }`}
-          style={{ left: targetPos, width: targetWidth }}
+          className="relative w-[340px] h-[84px] apple-track rounded-3xl overflow-hidden border border-white/15"
+          style={{ transform: `scale(${trackScale})`, transformOrigin: "top center" }}
         >
-          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-px w-0.5 bg-primary/60" />
-        </div>
+          {/* Track precision grid ticks */}
+          {Array.from({ length: 16 }).map((_, i) => (
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-white/[0.06]" style={{ left: `${(i + 1) * (340 / 17)}px` }} />
+          ))}
 
-        <StreakFlame combo={combo} objectPos={objectPos} />
-
-        {ghostStopPosition !== null && !hitResult && (
-          <div className="absolute top-2 bottom-2 w-1 rounded-full bg-secondary/60 shadow-[0_0_12px_hsl(var(--secondary)/0.8)]" style={{ left: ghostStopPosition }}>
-            <span className="absolute -top-4 -left-3 text-[8px] text-secondary tracking-wider">PB</span>
-          </div>
-        )}
-
-        {ghostPosition !== null && !hitResult && (
+          {/* Target Zone with Emerald Glass glow */}
           <div
-            aria-label="Personal best ghost orb"
-            className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border border-secondary/90 bg-secondary/30 shadow-[0_0_18px_hsl(var(--secondary)/0.9)] pointer-events-none"
-            style={{ left: ghostPosition, transform: "translateY(-50%) scale(.72)", transition: "left 16ms linear" }}
+            className={`absolute top-1 bottom-1 rounded-2xl transition-all duration-200 border ${
+              hitResult === "perfect"
+                ? "bg-[#30d158]/40 border-[#30d158] shadow-[0_0_35px_rgba(48,209,88,0.6)]"
+                : hitResult === "good"
+                ? "bg-[#ffcc00]/30 border-[#ffcc00] shadow-[0_0_25px_rgba(255,204,0,0.4)]"
+                : hitResult === "miss"
+                ? "bg-[#ff453a]/25 border-[#ff453a]"
+                : "bg-[#30d158]/15 border-[#30d158]/40 shadow-[0_0_15px_rgba(48,209,88,0.2)]"
+            }`}
+            style={{ left: targetPos, width: targetWidth }}
           >
-            <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-secondary tracking-wider">PB</span>
+            <div className="absolute top-0 bottom-0 left-1/2 -translate-x-px w-0.5 bg-[#30d158]/70" />
           </div>
-        )}
 
-        {particleActive && hitResult && hitResult !== "miss" && (
-          <ParticleExplosion key={particleKey} x={objectPos + OBJECT_SIZE / 2} y={40} type={hitResult as "perfect" | "good"} active={true} />
-        )}
+          <StreakFlame combo={combo} objectPos={objectPos} />
 
-        <div
-          className={`absolute top-1/2 -translate-y-1/2 transition-none ${ballShape}`}
-          style={{ left: objectPos, width: OBJECT_SIZE, height: OBJECT_SIZE, ...ballStyle }}
-        >
-          {combo >= 3 && !hitResult && (
-            <div className={`absolute inset-0 animate-pulse ${ballShape}`} style={{
-              background: combo >= 5
-                ? 'radial-gradient(circle, hsl(50 100% 70% / 0.4), transparent)'
-                : 'radial-gradient(circle, hsl(35 100% 60% / 0.3), transparent)',
-            }} />
+          {ghostStopPosition !== null && !hitResult && (
+            <div className="absolute top-2 bottom-2 w-1 rounded-full bg-secondary/60 shadow-[0_0_12px_hsl(var(--secondary)/0.8)]" style={{ left: ghostStopPosition }}>
+              <span className="absolute -top-4 -left-3 text-[8px] text-secondary tracking-wider">PB</span>
+            </div>
           )}
+
+          {ghostPosition !== null && !hitResult && (
+            <div
+              aria-label="Personal best ghost orb"
+              className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border border-secondary/90 bg-secondary/30 shadow-[0_0_18px_hsl(var(--secondary)/0.9)] pointer-events-none"
+              style={{ left: ghostPosition, transform: "translateY(-50%) scale(.72)", transition: "left 16ms linear" }}
+            >
+              <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-secondary tracking-wider">PB</span>
+            </div>
+          )}
+
+          {particleActive && hitResult && hitResult !== "miss" && (
+            <ParticleExplosion key={particleKey} x={objectPos + OBJECT_SIZE / 2} y={42} type={hitResult as "perfect" | "good"} active={true} />
+          )}
+
+          {/* Runner Object with Squircle Shape & Glow */}
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 transition-none shadow-lg ${ballShape}`}
+            style={{ left: objectPos, width: OBJECT_SIZE, height: OBJECT_SIZE, ...ballStyle }}
+          >
+            {combo >= 3 && !hitResult && (
+              <div className={`absolute inset-0 animate-pulse ${ballShape}`} style={{
+                background: combo >= 5
+                  ? 'radial-gradient(circle, rgba(255, 204, 0, 0.5), transparent)'
+                  : 'radial-gradient(circle, rgba(255, 149, 0, 0.4), transparent)',
+              }} />
+            )}
+          </div>
         </div>
       </div>
-      </div>
 
+      {/* Hit feedback badge */}
       <div className="h-10 flex items-center justify-center">
-        {hitResult === "perfect" && <span className="text-primary text-2xl font-black tracking-widest text-glow animate-in zoom-in duration-200 font-[var(--font-display)]">PERFECT!</span>}
-        {hitResult === "good" && <span className="text-accent text-xl font-bold tracking-widest text-glow-warning animate-in zoom-in duration-200 font-[var(--font-display)]">GOOD</span>}
-        {hitResult === "miss" && <span className="text-destructive text-xl font-bold tracking-widest text-glow-danger animate-in zoom-in duration-200 font-[var(--font-display)]">MISS</span>}
-        {!hitResult && <span className="text-muted-foreground/60 text-sm tracking-widest animate-pulse">TAP NOW</span>}
+        {hitResult === "perfect" && (
+          <span className="text-[#30d158] text-2xl font-black tracking-tight animate-spring-pop drop-shadow-[0_0_16px_rgba(48,209,88,0.6)]">
+            PERFECT!
+          </span>
+        )}
+        {hitResult === "good" && (
+          <span className="text-[#ffcc00] text-xl font-bold tracking-tight animate-spring-pop drop-shadow-[0_0_12px_rgba(255,204,0,0.5)]">
+            GOOD
+          </span>
+        )}
+        {hitResult === "miss" && (
+          <span className="text-[#ff453a] text-xl font-bold tracking-tight animate-spring-pop drop-shadow-[0_0_12px_rgba(255,69,58,0.5)]">
+            MISS
+          </span>
+        )}
+        {!hitResult && (
+          <span className="text-white/40 text-xs font-mono tracking-widest uppercase animate-pulse">
+            TAP AT THE EXACT TARGET
+          </span>
+        )}
       </div>
     </div>
   );
