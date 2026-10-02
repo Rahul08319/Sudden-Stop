@@ -27,8 +27,6 @@ import {
 } from "./youtubePlayables";
 import { toast } from "sonner";
 import { platform } from "../platform/platformManager";
-import { PlatformSwitcher } from "../components/PlatformSwitcher";
-import type { PlatformId } from "../platform/types";
 
 export type GameMode = "classic" | "survival" | "timeattack" | "practice";
 type ScreenState = "menu" | "modeselect" | "practice" | "weekly" | "settings" | "leaderboard" | "globalLeaderboard" | "daily" | "skins" | "playing" | "result" | "gameover" | "dailyresult";
@@ -83,9 +81,6 @@ export default function SuddenStopGame() {
   const [bestGhost, setBestGhost] = useState<GhostRun | null>(loadBestGhost);
   const [ghostPosition, setGhostPosition] = useState<number | null>(null);
   const [trackScale, setTrackScale] = useState(1);
-  const [activePlatform, setActivePlatform] = useState<PlatformId>(() => platform.getActivePlatform().id);
-  const [showPlatformSwitcher, setShowPlatformSwitcher] = useState(false);
-  const currentPlatformInfo = platform.getActivePlatform().info;
 
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -133,12 +128,6 @@ export default function SuddenStopGame() {
     return () => window.removeEventListener("resize", updateScale);
   }, []);
 
-  useEffect(() => {
-    return platform.onPlatformChange((p) => {
-      setActivePlatform(p.id);
-      toast.info(`Active Platform: ${p.info.name}`);
-    });
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -634,21 +623,6 @@ export default function SuddenStopGame() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setShowPlatformSwitcher(true);
-          }}
-          className="flex items-center gap-1.5 text-xs font-semibold text-white/90 hover:text-white px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-150 apple-spring-press font-apple"
-          title="Switch Active Gaming Platform SDK"
-        >
-          <span>{currentPlatformInfo.icon}</span>
-          <span className="hidden sm:inline tracking-tight">{currentPlatformInfo.name}</span>
-          <span className="text-[10px] text-white/50">▾</span>
-        </button>
-
-        <div className="h-4 w-px bg-white/15 mx-0.5" />
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
             setPlayablesAudioEnabled(!playablesAudioEnabled);
           }}
           className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all duration-150 apple-spring-press text-xs"
@@ -685,13 +659,6 @@ export default function SuddenStopGame() {
           </button>
         )}
       </header>
-
-      <PlatformSwitcher
-        isOpen={showPlatformSwitcher}
-        onClose={() => setShowPlatformSwitcher(false)}
-        currentPlatform={activePlatform}
-        onSelectPlatform={(id) => platform.setPlatform(id)}
-      />
 
       <WebGLBackdrop energy={Math.min(1, (combo + (screen === "playing" ? 2 : 0)) / 10)} paused={isSystemPaused} reducedMotion={settings.reducedMotion} />
 
@@ -741,8 +708,6 @@ export default function SuddenStopGame() {
           hasGhost={!!bestGhost}
           onPowerUpGuide={() => setShowPowerUpGuide(true)}
           inPlayables={inPlayables}
-          platformInfo={currentPlatformInfo}
-          onOpenPlatformSwitcher={() => setShowPlatformSwitcher(true)}
         />
       )}
       {screen === "modeselect" && <ModeSelectScreen onSelect={selectMode} onBack={() => setScreen("menu")} />}
@@ -823,8 +788,6 @@ function MenuScreen({
   hasGhost,
   onPowerUpGuide,
   inPlayables,
-  platformInfo,
-  onOpenPlatformSwitcher,
 }: {
   highScore: number;
   onStart: () => void;
@@ -839,27 +802,9 @@ function MenuScreen({
   hasGhost: boolean;
   onPowerUpGuide: () => void;
   inPlayables: boolean;
-  platformInfo: import("../platform/types").PlatformInfo;
-  onOpenPlatformSwitcher: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-5 px-4 w-full max-w-[440px] animate-in fade-in duration-500 font-apple">
-      {/* Platform Badge & Switcher */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenPlatformSwitcher();
-        }}
-        className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full apple-glass border border-white/20 shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-white/40 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-2xl"
-      >
-        <span className="text-base">{platformInfo.icon}</span>
-        <span className="text-xs font-semibold tracking-wide text-white/90">{platformInfo.name}</span>
-        <span className="text-[10px] font-mono uppercase bg-white/15 px-2 py-0.5 rounded-full text-white/70">
-          Switch ▾
-        </span>
-      </button>
-
       {/* Hero Title & Precision Subtitle */}
       <div className="text-center space-y-1">
         <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]">

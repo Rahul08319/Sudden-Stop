@@ -16,6 +16,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/favicon.ico" />
+    <script>
+      // Clear legacy service worker registrations and caches to prevent 404 black screens
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for (var i = 0; i < regs.length; i++) regs[i].unregister();
+          });
+        }
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

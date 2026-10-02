@@ -26,21 +26,13 @@ export class MsStoreAdapter implements PlatformAdapter {
   detect(): boolean {
     return (
       typeof window !== "undefined" &&
-      (window.matchMedia?.("(display-mode: standalone)")?.matches ||
-        window.navigator.userAgent.includes("MSStore") ||
-        (typeof navigator !== "undefined" && "windowControlsOverlay" in navigator))
+      (window.navigator.userAgent.includes("MSStore") ||
+        Boolean((window as unknown as { Windows?: unknown }).Windows))
     );
   }
 
   async init(): Promise<void> {
-    // Register service worker if available
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      try {
-        await navigator.serviceWorker.register("/sw.js");
-      } catch {
-        // Continue
-      }
-    }
+    // Dormant on web - only active when explicitly packaged for MSStore
   }
 
   firstFrameReady(): void {}

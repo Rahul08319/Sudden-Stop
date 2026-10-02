@@ -67,7 +67,9 @@ export class PlatformManager {
 
     // 2. Check saved manual selection in localStorage for developer/user simulator
     const saved = localStorage.getItem("suddenstop_target_platform") as PlatformId | null;
-    if (saved && this.adapters.has(saved)) {
+    if (saved === "msstore") {
+      localStorage.removeItem("suddenstop_target_platform");
+    } else if (saved && this.adapters.has(saved)) {
       return this.adapters.get(saved)!;
     }
 

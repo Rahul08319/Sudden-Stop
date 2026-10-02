@@ -47,16 +47,20 @@ const fragmentShader = `
 
     float vignette = smoothstep(1.1, 0.2, length(aspectUv));
     color *= 0.55 + vignette * 0.55;
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, 0.85);
   }
 `;
 
 function createShader(gl: WebGLRenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type);
-  if (!shader) return null;
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+  try {
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function WebGLBackdrop({ energy, paused, reducedMotion }: WebGLBackdropProps) {
@@ -65,63 +69,100 @@ export default function WebGLBackdrop({ energy, paused, reducedMotion }: WebGLBa
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const gl = canvas.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
+
+    let gl: WebGLRenderingContext | null = null;
+    try {
+      gl = canvas.getContext("webgl", { alpha: true, antialias: false, powerPreference: "low-power" });
+    } catch {
+      return;
+    }
     if (!gl) return;
 
-    const vertex = createShader(gl, gl.VERTEX_SHADER, vertexShader);
-    const fragment = createShader(gl, gl.FRAGMENT_SHADER, fragmentShader);
-    if (!vertex || !fragment) return;
-    const program = gl.createProgram();
-    if (!program) return;
-    gl.attachShader(program, vertex);
-    gl.attachShader(program, fragment);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
-
-    const position = gl.getAttribLocation(program, "a_position");
-    const resolution = gl.getUniformLocation(program, "u_resolution");
-    const time = gl.getUniformLocation(program, "u_time");
-    const sceneEnergy = gl.getUniformLocation(program, "u_energy");
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-
+    let vertex: WebGLShader | null = null;
+    let fragment: WebGLShader | null = null;
+    let program: WebGLProgram | null = null;
+    let buffer: WebGLBuffer | null = null;
     let frame = 0;
-    let start = performance.now();
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const width = Math.max(1, Math.floor(window.innerWidth * dpr));
-      const height = Math.max(1, Math.floor(window.innerHeight * dpr));
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
-      gl.viewport(0, 0, width, height);
-    };
-    const render = (now: number) => {
-      resize();
-      gl.useProgram(program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.enableVertexAttribArray(position);
-      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-      gl.uniform2f(resolution, canvas.width, canvas.height);
-      gl.uniform1f(time, reducedMotion ? 0 : (now - start) / 1000);
-      gl.uniform1f(sceneEnergy, energy);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      if (!paused && !reducedMotion) frame = requestAnimationFrame(render);
-    };
 
-    render(start);
-    window.addEventListener("resize", resize);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", resize);
-      gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
-      gl.deleteShader(vertex);
-      gl.deleteShader(fragment);
-    };
+    try {
+      vertex = createShader(gl, gl.VERTEX_SHADER, vertexShader);
+      fragment = createShader(gl, gl.FRAGMENT_SHADER, fragmentShader);
+      if (!vertex || !fragment) return;
+      program = gl.createProgram();
+      if (!program) return;
+      gl.attachShader(program, vertex);
+      gl.attachShader(program, fragment);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+
+      const position = gl.getAttribLocation(program, "a_position");
+      const resolution = gl.getUniformLocation(program, "u_resolution");
+      const time = gl.getUniformLocation(program, "u_time");
+      const sceneEnergy = gl.getUniformLocation(program, "u_energy");
+      buffer = gl.createBuffer();
+      if (!buffer) return;
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+
+      const start = performance.now();
+      const resize = () => {
+        if (!gl || !canvas) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        const width = Math.max(1, Math.floor(window.innerWidth * dpr));
+        const height = Math.max(1, Math.floor(window.innerHeight * dpr));
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+        gl.viewport(0, 0, width, height);
+      };
+
+      const render = (now: number) => {
+        if (!gl || !program || !buffer) return;
+        try {
+          resize();
+          gl.useProgram(program);
+          gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+          gl.enableVertexAttribArray(position);
+          gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+          gl.uniform2f(resolution, canvas.width, canvas.height);
+          gl.uniform1f(time, reducedMotion ? 0 : (now - start) / 1000);
+          gl.uniform1f(sceneEnergy, energy);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+          if (!paused && !reducedMotion) frame = requestAnimationFrame(render);
+        } catch {
+          // Gracefully stop on error
+        }
+      };
+
+      const handleContextLost = (e: Event) => {
+        e.preventDefault();
+        cancelAnimationFrame(frame);
+      };
+      canvas.addEventListener("webglcontextlost", handleContextLost, false);
+
+      render(start);
+      window.addEventListener("resize", resize);
+
+      return () => {
+        cancelAnimationFrame(frame);
+        window.removeEventListener("resize", resize);
+        canvas.removeEventListener("webglcontextlost", handleContextLost);
+        try {
+          if (gl) {
+            if (buffer) gl.deleteBuffer(buffer);
+            if (program) gl.deleteProgram(program);
+            if (vertex) gl.deleteShader(vertex);
+            if (fragment) gl.deleteShader(fragment);
+          }
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
   }, [energy, paused, reducedMotion]);
 
-  return <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true" />;
+  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 h-full w-full z-0 opacity-80" aria-hidden="true" />;
 }
